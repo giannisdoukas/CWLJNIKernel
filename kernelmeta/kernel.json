@@ -1,0 +1,11 @@
+{
+  "argv": [
+    "python",
+    "-m",
+    "mykernel",
+    "-f",
+    "{connection_file}"
+  ],
+  "display_name": "Common Workflow Languages",
+  "language": "yaml"
+}
