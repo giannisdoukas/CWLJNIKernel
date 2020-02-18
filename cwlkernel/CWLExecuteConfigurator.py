@@ -1,6 +1,8 @@
 from typing import Dict, Tuple, Callable
 import os
 
+# TODO: use tempfile for windows compatibility
+
 class CWLExecuteConfigurator:
     # property "Name of the property": ("default", validator)
     properties: Dict[str, Tuple[str, Callable]] = {
