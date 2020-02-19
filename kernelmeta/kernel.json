@@ -2,10 +2,10 @@
   "argv": [
     "python",
     "-m",
-    "mykernel",
+    "cwlkernel",
     "-f",
     "{connection_file}"
   ],
   "display_name": "Common Workflow Languages",
-  "language": "yaml"
+  "language": "cwl"
 }
