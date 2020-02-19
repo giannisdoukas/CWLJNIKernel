@@ -1,7 +1,7 @@
-from os import makedirs
 import os
+from os import makedirs
 from os.path import exists
-from typing import NoReturn, List
+from typing import List
 
 
 class IOFileManager:
@@ -9,6 +9,7 @@ class IOFileManager:
     ROOT_DIRECTORY: str
 
     def __init__(self, root_directory: str):
+        root_directory = os.path.realpath(root_directory)
         if not exists(root_directory):
             makedirs(root_directory)
         self.ROOT_DIRECTORY = root_directory

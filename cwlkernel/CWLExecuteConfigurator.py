@@ -4,6 +4,10 @@ import os
 # TODO: use tempfile for windows compatibility
 
 class CWLExecuteConfigurator:
+
+    CWLKERNEL_MODE: str
+    CWLKERNEL_BOOT_DIRECTORY: str
+
     # property "Name of the property": ("default", validator)
     properties: Dict[str, Tuple[str, Callable]] = {
         'CWLKERNEL_MODE': ('SIMPLE', lambda value: value.upper() in {'SIMPLE'}), # no case sensitive
