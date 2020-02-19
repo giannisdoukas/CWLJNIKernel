@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict
 
 from ipykernel.kernelbase import Kernel
 
@@ -17,8 +17,8 @@ class CWLKernel(Kernel):
         super().__init__(**kwargs)
         self._yaml_input_data: List[str] = []
 
-    def do_execute(self, code, silent, store_history=True,
-                   user_expressions=None, allow_stdin=False):
+    def do_execute(self, code: str, silent, store_history: bool=True,
+                   user_expressions=None, allow_stdin: bool=False) -> Dict:
         self._yaml_input_data.append(code)
 
         return {
