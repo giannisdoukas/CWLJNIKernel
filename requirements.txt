@@ -1,4 +1,5 @@
 appnope==0.1.0
+cwltool==2.0.20200126090152
 decorator==4.4.1
 ipython-genutils==0.2.0
 jedi==0.16.0
@@ -9,9 +10,9 @@ pickleshare==0.7.5
 psutil==5.7.0
 python-dateutil==2.8.1
 pyzmq==18.1.1
+ruamel.yaml.clib==0.2.0
+ruamel.yaml==0.16.5
 six==1.14.0
 tornado==6.0.3
 traitlets==4.3.3
-cwltool==2.0.20200126090152
-ruamel.yaml==0.16.5
-ruamel.yaml.clib==0.2.0
+uritools==3.0.0
