@@ -16,11 +16,20 @@ class CWLKernelTests(unittest.TestCase):
         kernel = CWLKernel()
         with open(os.sep.join([self.data_directory, 'data1.yml'])) as f:
             data = f.read()
-        kernel.do_execute(data, False)
+        exec_response = kernel.do_execute(data, False)
 
+        self.assertDictEqual(
+            {"status": "ok", "execution_count": 0, 'payload': [], 'user_expressions': {}},
+            exec_response
+        )
         self.assertListEqual([data], kernel._yaml_input_data)
 
-        kernel.do_execute(data, False)
+        exec_response = kernel.do_execute(data, False)
+        # The base class increments the execution count. So, exec_count remains 0
+        self.assertDictEqual(
+            {"status": "ok", "execution_count": 0, 'payload': [], 'user_expressions': {}},
+            exec_response
+        )
         self.assertListEqual([data, data], kernel._yaml_input_data)
 
 if __name__ == '__main__':

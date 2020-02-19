@@ -21,6 +21,15 @@ class CWLKernel(Kernel):
                    user_expressions=None, allow_stdin=False):
         self._yaml_input_data.append(code)
 
+        return {
+            'status': 'ok',
+            # The base class increments the execution count
+            'execution_count': self.execution_count,
+            'payload': [],
+            'user_expressions': {},
+        }
+
+
 if __name__ == '__main__':
     from ipykernel.kernelapp import IPKernelApp
     IPKernelApp.launch_instance(kernel_class=CWLKernel)
