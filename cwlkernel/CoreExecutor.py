@@ -1,4 +1,5 @@
-from typing import List, NoReturn
+from io import StringIO
+from typing import List, Tuple, Optional
 from uuid import uuid4
 
 from cwltool.main import main as cwltool_main
@@ -25,7 +26,11 @@ class CoreExecutor:
         self._workflow_path = self.file_manager.write(f'{str(uuid4())}.cwl', workflow_str.encode())
         return self._workflow_path
 
-    def execute(self) -> NoReturn:
+    def execute(self) -> Tuple[StringIO, StringIO, Optional[Exception]]:
         args = [self._workflow_path, *self._data_paths]
-        if cwltool_main(argsl=args) != 0:
-            raise RuntimeError('Error on executing workflow')
+        stdout = StringIO()
+        stderr = StringIO()
+
+        if cwltool_main(argsl=args, stderr=stderr, stdout=stdout) != 0:
+            return stdout, stderr, RuntimeError('On Kernel Exception: Error on executing workflow')
+        return stdout, stderr, None

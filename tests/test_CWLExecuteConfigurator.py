@@ -28,6 +28,11 @@ class CWLExecuteConfiguratorTests(unittest.TestCase):
         for property in conf.properties:
             self.assertIsNotNone(conf.__getattribute__(property))
 
+    def tearDown(self) -> None:
+        try:
+            os.environ.pop('CWLKERNEL_MODE')
+        except KeyError:
+            pass
 
 if __name__ == '__main__':
     unittest.main()

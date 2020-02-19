@@ -1,10 +1,9 @@
+import os
 import tempfile
 import unittest
 
-from cwlkernel.CWLExecuteConfigurator import CWLExecuteConfigurator
 from cwlkernel.CWLKernel import CWLKernel
-from ruamel import yaml
-import os
+
 
 class CWLKernelTests(unittest.TestCase):
     data_directory: str
@@ -20,6 +19,9 @@ class CWLKernelTests(unittest.TestCase):
 
     def test_get_input_data(self):
         kernel = CWLKernel()
+        # cancel send_response
+        kernel.send_response = lambda *args, **kwargs: None
+
         with open(os.sep.join([self.data_directory, 'data1.yml'])) as f:
             data = f.read()
         exec_response = kernel.do_execute(data, False)
@@ -38,9 +40,23 @@ class CWLKernelTests(unittest.TestCase):
         )
         self.assertListEqual([data, data], kernel._yaml_input_data)
 
+    def test_execute_echo_cwl(self):
+        kernel = CWLKernel()
+        # cancel send_response
+        kernel.send_response = lambda *args, **kwargs: None
+
+        with open(os.sep.join([self.data_directory, 'echo-job.yml'])) as f:
+            data = f.read()
+        kernel.do_execute(data, False)
+        with open(os.sep.join([self.cwl_directory, 'echo.cwl'])) as f:
+            workflow_str = f.read()
+        kernel.do_execute(workflow_str, False)
 
     def test_get_past_results(self):
         kernel = CWLKernel()
+        # cancel send_response
+        kernel.send_response = lambda *args, **kwargs: None
+
         with open(os.sep.join([self.data_directory, 'tar_job.yml'])) as f:
             data = f.read()
         kernel.do_execute(data, False)
@@ -54,6 +70,26 @@ class CWLKernelTests(unittest.TestCase):
         correct_result = {os.sep.join([results_dir, 'hello.txt'])}
         self.assertSetEqual(correct_result, result_files_in_directory)
         self.assertSetEqual(correct_result, return_past_results)
+
+    def test_send_invadid_yaml(self):
+        kernel = CWLKernel()
+        # cancel send_response
+        kernel.send_response = lambda *args, **kwargs: None
+
+        invalid_yaml = """
+        this is an invalid yaml: fp
+        ?: 1
+            ?: 2
+        ?
+        """
+        exec_result = kernel.do_execute(invalid_yaml, False)
+        self.assertDictEqual({
+            'status': 'error',
+            # The base class increments the execution count
+            'execution_count': 0,
+            'payload': [],
+            'user_expressions': {},
+        }, exec_result)
 
 
 if __name__ == '__main__':
