@@ -1,8 +1,9 @@
 import os
 from os import makedirs
 from os.path import exists
-from typing import List
-
+from typing import List, NoReturn
+from pathlib import Path
+import shutil
 
 class IOFileManager:
 
@@ -31,3 +32,14 @@ class IOFileManager:
 
     def get_files(self) -> List[str]:
         return list(self._files_registry)
+
+    def append_files(self, files_to_copy: List[str], relative_path: str) -> List[str]:
+        real_path = os.path.realpath(os.path.join(self.ROOT_DIRECTORY, relative_path))
+        Path(real_path).mkdir(parents=True, exist_ok=True)
+        new_files = []
+        for p in files_to_copy:
+            new_filename = os.sep.join([real_path, os.path.basename(p)])
+            shutil.copyfile(p, new_filename)
+            self._files_registry.add(new_filename)
+            new_files.append(new_filename)
+        return new_files

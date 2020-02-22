@@ -21,7 +21,7 @@ from typing import (
     Union,
     cast,
 )
-from uuid import uuid4
+from uuid import uuid4, UUID
 
 import coloredlogs
 from cwltool import command_line_tool
@@ -74,14 +74,21 @@ class CoreExecutor:
         self._workflow_path = self.file_manager.write(f'{str(uuid4())}.cwl', workflow_str.encode())
         return self._workflow_path
 
-    def execute(self) -> Tuple[StringIO, StringIO, Optional[Exception]]:
+    def execute(self) -> Tuple[UUID, List[str], StringIO, StringIO, Optional[Exception]]:
+        """
+        :return: Run ID, List of new files, stdout, stderr, exception if there is any
+        """
+        run_id = uuid4()
         args = [self._workflow_path, *self._data_paths]
         stdout = StringIO()
         stderr = StringIO()
 
-        if self._cwltool_main(argsl=args, stderr=stderr, stdout=stdout) != 0:
-            return stdout, stderr, RuntimeError('On Kernel Exception: Error on executing workflow')
-        return stdout, stderr, None
+        try:
+            created_files = self._cwltool_main(argsl=args, stderr=stderr, stdout=stdout)
+            return run_id, created_files, stdout, stderr, None
+        except Exception as e:
+            return run_id, [], stdout, stderr, e
+
 
     @classmethod
     def _check_workflow_file(cls, args):
@@ -103,7 +110,19 @@ class CoreExecutor:
                       loading_context: Optional[LoadingContext] = None,
                       runtime_context: Optional[RuntimeContext] = None,
                       input_required: bool = True,
-                      ) -> int:
+                      ) -> List[str]:
+        """
+
+        :param argsl:
+        :param stdin:
+        :param stdout:
+        :param stderr:
+        :param logger_handler:
+        :param loading_context:
+        :param runtime_context:
+        :param input_required:
+        :return: A list of the paths of created files by the workflow
+        """
 
         stdout = cls._force_utf8_to_stream(stdout)
 
@@ -150,12 +169,6 @@ class CoreExecutor:
 
                 loading_context, workflowobj, uri = fetch_document(uri, loading_context)
 
-                if args.print_deps and loading_context.loader:
-                    printdeps(
-                        workflowobj, loading_context.loader, stdout, args.relative_deps, uri
-                    )
-                    return 0
-
                 loading_context, uri = resolve_and_validate_document(
                     loading_context,
                     workflowobj,
@@ -168,11 +181,6 @@ class CoreExecutor:
                     raise Exception("Impossible code path.")
                 processobj, metadata = loading_context.loader.resolve_ref(uri)
                 processobj = cast(CommentedMap, processobj)
-                if args.pack:
-                    stdout.write(
-                        print_pack(loading_context.loader, processobj, uri, metadata)
-                    )
-                    return 0
 
                 if args.provenance and runtime_context.research_obj:
                     # Can't really be combined with args.pack at same time
@@ -180,28 +188,20 @@ class CoreExecutor:
                         print_pack(loading_context.loader, processobj, uri, metadata)
                     )
 
-                if args.print_pre:
-                    stdout.write(
-                        json_dumps(
-                            processobj, indent=4, sort_keys=True, separators=(",", ": ")
-                        )
-                    )
-                    return 0
-
                 tool = make_tool(uri, loading_context)
 
             except (validate.ValidationException) as exc:
                 _logger.error(
                     "Tool definition failed validation:\n%s", str(exc), exc_info=args.debug
                 )
-                return 1
+                raise exc
             except (RuntimeError, WorkflowException) as exc:
                 _logger.error(
                     "Tool definition failed initialization:\n%s",
                     str(exc),
                     exc_info=args.debug,
                 )
-                return 1
+                raise exc
             except Exception as exc:
                 _logger.error(
                     "I'm sorry, I couldn't load this CWL file%s.\nThe error was: %s",
@@ -209,7 +209,7 @@ class CoreExecutor:
                     str(exc) if not args.debug else "",
                     exc_info=args.debug,
                 )
-                return 1
+                raise exc
 
             if isinstance(tool, int):
                 return tool
@@ -253,8 +253,6 @@ class CoreExecutor:
                 initialized_job_order_object = cls._init_job_order(args, input_basedir, input_required,
                                                                    job_order_object, jobloader, runtime_context, stdout,
                                                                    tool)
-
-
 
                 conf_file = getattr(
                     args, "beta_dependency_resolvers_configuration", None
@@ -322,22 +320,27 @@ class CoreExecutor:
 
                 if status != "success":
                     _logger.warning("Final process status is %s", status)
-                    return 1
+                    raise RuntimeError("Final process status is %s", status)
+
+
                 _logger.info("Final process status is %s", status)
-                return 0
+                return [
+                    os.path.join([runtime_context.outdir, output_binding['outputBinding']['glob']])
+                    for output_binding in loading_context.metadata['outputs']
+                ]
 
             except (validate.ValidationException) as exc:
                 _logger.error(
                     "Input object failed validation:\n%s", str(exc), exc_info=args.debug
                 )
-                return 1
+                raise exc
             except UnsupportedRequirement as exc:
                 _logger.error(
                     "Workflow or tool uses unsupported feature:\n%s",
                     str(exc),
                     exc_info=args.debug,
                 )
-                return 33
+                raise exc
             except WorkflowException as exc:
                 _logger.error(
                     "Workflow error%s:\n%s",
@@ -345,7 +348,7 @@ class CoreExecutor:
                     strip_dup_lineno(str(exc)),
                     exc_info=args.debug,
                 )
-                return 1
+                raise exc
             except Exception as exc:  # pylint: disable=broad-except
                 _logger.error(
                     "Unhandled error%s:\n  %s",
@@ -353,7 +356,7 @@ class CoreExecutor:
                     str(exc),
                     exc_info=args.debug,
                 )
-                return 1
+                raise exc
 
         finally:
             if (
@@ -487,7 +490,7 @@ class CoreExecutor:
 
     @classmethod
     def _init_cwl_logger(cls, logger_handler, stderr):
-        _logger.removeHandler(defaultStreamHandler)
+        # _logger.removeHandler(defaultStreamHandler)
         stderr_handler = logger_handler
         if stderr_handler is not None:
             _logger.addHandler(stderr_handler)

@@ -1,3 +1,4 @@
 tarfile:
   class: File
-  path: hello.tar
+  # set the filename in the script
+  path: {tar_directory}/tarfile.tar
