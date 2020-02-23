@@ -1,6 +1,7 @@
 import os
 import tempfile
 import unittest
+import io
 
 from cwlkernel.CoreExecutor import CoreExecutor
 from cwlkernel.IOManager import IOFileManager
@@ -29,7 +30,12 @@ class CoreExecutorTests(unittest.TestCase):
             data_str = f.read()
         executor.set_data([data_str])
         try:
-            executor.execute()
+            execution_id, new_files, stdout, stderr, exception = executor.execute()
+            self.assertIsNotNone(execution_id)
+            self.assertListEqual(new_files, [])
+            self.assertIsInstance(stdout, io.IOBase)
+            self.assertIsInstance(stderr, io.IOBase)
+            self.assertIsNone(exception, 'An exception occurred while executing workflow')
         except Exception:
             self.fail("execution failed")
 

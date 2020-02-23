@@ -16,13 +16,11 @@ class CWLKernelTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         logging.basicConfig(
             level=logging.DEBUG,
-            handlers=[logging.StreamHandler(sys.stdout)],
             format='%(asctime)-15s:%(levelname)s:%(name)s:%(process)d:%(message)s'
         )
         cls.data_directory = os.sep.join([os.path.dirname(os.path.realpath(__file__)), 'input_data'])
         cls.cwl_directory = os.sep.join([os.path.dirname(os.path.realpath(__file__)), 'cwl'])
         cls.kernel_root_directory = tempfile.mkdtemp()
-
 
     def test_get_input_data(self):
         from cwlkernel.CWLKernel import CWLKernel
@@ -88,14 +86,11 @@ class CWLKernelTests(unittest.TestCase):
         with open(os.sep.join([self.cwl_directory, 'extract_tar.cwl'])) as f:
             workflow_str = f.read()
         result = kernel.do_execute(workflow_str, False)
-        self.assertEqual('ok', result['status'], f'execution returned an error')
 
-        results_dir = kernel._results_manager.ROOT_DIRECTORY
-        result_files_in_directory = set([f for f in os.listdir(results_dir) if os.path.isfile(f)])
-        return_past_results = set(kernel.get_past_results())
-        correct_result = {os.sep.join([results_dir, 'hello.txt'])}
-        self.assertSetEqual(correct_result, result_files_in_directory)
-        self.assertSetEqual(correct_result, return_past_results)
+        full_path, basename = [(f, os.path.basename(f)) for f in kernel.get_past_results()][0]
+
+        self.assertTrue(full_path.startswith(kernel._results_manager.ROOT_DIRECTORY), 'output is in a wrong directory')
+        self.assertTrue(basename, 'hello.txt')
 
     def test_send_invalid_yaml(self):
         from cwlkernel.CWLKernel import CWLKernel

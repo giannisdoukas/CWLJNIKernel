@@ -273,7 +273,7 @@ class CoreExecutor:
                 (out, status) = real_executor(
                     tool, initialized_job_order_object, runtime_context, logger=_logger
                 )
-
+                _logger.info(f'OUT::: {out}')
                 if out is not None:
                     if runtime_context.research_obj is not None:
                         runtime_context.research_obj.create_job(out, None, True)
@@ -324,10 +324,7 @@ class CoreExecutor:
 
 
                 _logger.info("Final process status is %s", status)
-                return [
-                    os.path.join([runtime_context.outdir, output_binding['outputBinding']['glob']])
-                    for output_binding in loading_context.metadata['outputs']
-                ]
+                return [output_binding['location'] for output_binding in out.values()]
 
             except (validate.ValidationException) as exc:
                 _logger.error(

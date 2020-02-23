@@ -4,6 +4,7 @@ from os.path import exists
 from typing import List, NoReturn
 from pathlib import Path
 import shutil
+from urllib.parse import urlparse
 
 class IOFileManager:
 
@@ -38,6 +39,7 @@ class IOFileManager:
         Path(real_path).mkdir(parents=True, exist_ok=True)
         new_files = []
         for p in files_to_copy:
+            p = urlparse(p).path
             new_filename = os.sep.join([real_path, os.path.basename(p)])
             shutil.copyfile(p, new_filename)
             self._files_registry.add(new_filename)
