@@ -273,7 +273,7 @@ class CoreExecutor:
                 (out, status) = real_executor(
                     tool, initialized_job_order_object, runtime_context, logger=_logger
                 )
-                _logger.info(f'OUT::: {out}')
+                _logger.info(f'real executor out:\t{out}')
                 if out is not None:
                     if runtime_context.research_obj is not None:
                         runtime_context.research_obj.create_job(out, None, True)
