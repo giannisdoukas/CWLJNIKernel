@@ -26,3 +26,14 @@ class CWLLogger:
             ]
         )
         return Metrics(cpu_metrics, vmemory_metrics, disk_partitions, disk_usage)
+
+    @classmethod
+    def get_hostname(cls) -> str:
+        import socket
+        return socket.gethostname()
+
+    @classmethod
+    def to_dict(cls):
+        metrics = cls .collect_infrastructure_metrics()._asdict()
+        hostname = cls.get_hostname()
+        return {**metrics, 'hostname': hostname}

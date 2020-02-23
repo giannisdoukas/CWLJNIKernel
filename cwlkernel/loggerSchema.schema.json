@@ -69,7 +69,11 @@
             "type": "object"
           }
         }
-      }
+      },
+      "required": ["cpu_metrics", "vmemory_metrics", "disk_partition", "disk_usage"]
+    },
+    "hostname": {
+      "type": "string"
     }
   }
 }
