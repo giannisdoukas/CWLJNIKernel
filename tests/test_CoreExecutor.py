@@ -7,7 +7,7 @@ from cwlkernel.CoreExecutor import CoreExecutor
 from cwlkernel.IOManager import IOFileManager
 
 
-class CoreExecutorTests(unittest.TestCase):
+class TestCoreExecutor(unittest.TestCase):
     data_directory: str
     cwl_directory: str
     kernel_root_directory: str

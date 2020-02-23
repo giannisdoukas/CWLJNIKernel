@@ -1,12 +1,12 @@
 import logging
 import os
-import sys
 import tarfile
 import tempfile
 import unittest
 
 
-class CWLKernelTests(unittest.TestCase):
+class TestCWLKernel(unittest.TestCase):
+
     data_directory: str
     cwl_directory: str
     kernel_root_directory: str

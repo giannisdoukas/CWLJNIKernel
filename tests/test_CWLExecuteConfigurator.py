@@ -2,7 +2,7 @@ import unittest
 import os
 from cwlkernel.CWLExecuteConfigurator import CWLExecuteConfigurator
 
-class CWLExecuteConfiguratorTests(unittest.TestCase):
+class TestCWLExecuteConfigurator(unittest.TestCase):
     def test_load_CWLKERNEL_MODE(self):
         conf = CWLExecuteConfigurator()
         self.assertEqual(conf.CWLKERNEL_MODE, 'SIMPLE')

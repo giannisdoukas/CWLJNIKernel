@@ -7,7 +7,7 @@ from os.path import sep
 from cwlkernel.IOManager import IOFileManager
 
 
-class IOManagerTests(unittest.TestCase):
+class TestIOManager(unittest.TestCase):
     root_directory: str
 
     @classmethod
