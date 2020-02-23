@@ -136,3 +136,5 @@ dmypy.json
 .pytype/
 !/.ipynb_checkpoints/
 *.ipynb
+
+*.txt
