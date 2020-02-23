@@ -36,7 +36,23 @@ class TestCWLLoggerStorageManager(unittest.TestCase):
 
 
     def test_save(self):
-        raise NotImplementedError()
+        import jsonschema
+        schema_path = os.path.join(
+            os.path.dirname(os.path.realpath(__file__)),
+            '..',
+            'cwlkernel',
+            'loggerSchema.schema.json'
+        )
+        with open(schema_path) as f:
+            schema = json.load(f)
+
+        storage_path = tempfile.mkdtemp()
+        logger_storage = CWLLoggerStorageManager(storage_path)
+        new_file = logger_storage.collect().save()
+
+        self.assertTrue(os.path.isfile(new_file))
+        log_data = list(logger_storage.load(1))[0]
+        jsonschema.validate(log_data, schema)
 
 
 if __name__ == '__main__':
