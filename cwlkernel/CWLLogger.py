@@ -35,5 +35,11 @@ class CWLLogger:
     @classmethod
     def to_dict(cls):
         metrics = cls .collect_infrastructure_metrics()._asdict()
+        for key in ['cpu_metrics', 'vmemory_metrics']:
+            metrics[key] = {**metrics[key]._asdict()}
+        for key in ['disk_partition']:
+            metrics[key] = [{**m._asdict()} for m in metrics[key]]
+        for key in ['disk_usage']:
+            metrics[key] = [{m[0]: {**m[1]._asdict()}} for m in metrics[key]]
         hostname = cls.get_hostname()
         return {**metrics, 'hostname': hostname}
