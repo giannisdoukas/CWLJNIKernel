@@ -14,4 +14,3 @@ script:
   - coverage run --source cwlkernel -m unittest discover tests
 after_script:
   - coveralls
-service_name: travis-pro
