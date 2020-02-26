@@ -12,5 +12,5 @@ install:
 # command to run tests
 script:
   - coverage run --source cwlkernel -m unittest discover tests
-after_success:
+after_script:
   - coveralls
