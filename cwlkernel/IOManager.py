@@ -6,8 +6,8 @@ from pathlib import Path
 import shutil
 from urllib.parse import urlparse
 
-class IOFileManager:
 
+class IOFileManager:
     ROOT_DIRECTORY: str
 
     def __init__(self, root_directory: str):
@@ -34,7 +34,7 @@ class IOFileManager:
     def get_files(self) -> List[str]:
         return list(self._files_registry)
 
-    def append_files(self, files_to_copy: List[str], relative_path: str) -> List[str]:
+    def append_files(self, files_to_copy: List[str], relative_path: str = '.') -> List[str]:
         real_path = os.path.realpath(os.path.join(self.ROOT_DIRECTORY, relative_path))
         Path(real_path).mkdir(parents=True, exist_ok=True)
         new_files = []

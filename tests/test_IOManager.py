@@ -14,7 +14,6 @@ class TestIOManager(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.root_directory = tempfile.mkdtemp()
 
-
     def test_read(self):
         fd, filename = tempfile.mkstemp(prefix='CWLJNKernelUnittests_', dir=self.root_directory)
         test_text = b'test text'
@@ -38,6 +37,21 @@ class TestIOManager(unittest.TestCase):
             text = f.read()
         self.assertEqual(text_to_write, text)
 
+    def test_append_files(self):
+        source_tmp_dir = tempfile.mkdtemp()
+        files = [os.path.join(source_tmp_dir, 'tmpfilefortest')]
+        with open(files[0], 'w') as f:
+            f.write('tmp text')
+        file_manager = IOFileManager(self.root_directory)
+        new_files = file_manager.append_files(files)
+
+        self.assertListEqual(
+            [os.path.basename(f) for f in new_files],
+            [os.path.basename(f) for f in os.listdir(self.root_directory) if os.path.isfile(os.path.join(self.root_directory, f))]
+        )
+        with open(new_files[0]) as f:
+            copy_text = f.read()
+        self.assertEqual(copy_text, 'tmp text')
 
     @classmethod
     def tearDownClass(cls) -> None:
