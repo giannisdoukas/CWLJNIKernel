@@ -123,7 +123,6 @@ class CoreExecutor:
         :param input_required:
         :return: A list of the paths of created files by the workflow
         """
-
         stdout = cls._force_utf8_to_stream(stdout)
 
         stderr_handler = cls._init_cwl_logger(logger_handler, stderr)
