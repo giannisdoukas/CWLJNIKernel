@@ -74,6 +74,10 @@
     },
     "hostname": {
       "type": "string"
+    },
+    "process_id": {
+      "process_id": {"type": "number", "minimum": 0, "multipleOf": 1},
+      "parent_process_id": {"type": "number", "minimum": 0, "multipleOf": 1}
     }
   }
 }

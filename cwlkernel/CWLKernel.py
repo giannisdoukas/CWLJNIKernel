@@ -1,13 +1,15 @@
+import logging
 import os
 from typing import List, Dict, Optional, Tuple
 
 from ipykernel.kernelbase import Kernel
 from ruamel.yaml import YAML
 
+from cwlkernel.CWLLogger import CWLLogger
+from cwlkernel.CWLLoggerStorageManager import CWLLoggerStorageManager
 from .CWLExecuteConfigurator import CWLExecuteConfigurator
 from .CoreExecutor import CoreExecutor
 from .IOManager import IOFileManager
-import logging
 
 logger = logging.Logger('CWLKernel')
 
@@ -31,7 +33,15 @@ class CWLKernel(Kernel):
         runtime_file_manager = IOFileManager(os.sep.join([conf.CWLKERNEL_BOOT_DIRECTORY, 'runtime_data']))
         self._cwl_executor = CoreExecutor(runtime_file_manager)
         self._pid = (os.getpid(), os.getppid())
+        self._cwl_logger = CWLLogger(os.path.join(conf.CWLKERNEL_BOOT_DIRECTORY, 'logs'))
+        self._set_process_ids()
+        self._cwl_logger.save()
 
+    def _set_process_ids(self):
+        self._cwl_logger.process_id = {
+            "process_id": os.getpid(),
+            "parent_process_id": os.getppid()
+        }
 
     def _code_is_valid_yaml(self, code) -> Optional[Dict]:
         yaml = YAML(typ='safe')
@@ -68,11 +78,9 @@ class CWLKernel(Kernel):
             'user_expressions': {},
         }
 
-
     def _accumulate_data(self, code):
         self._yaml_input_data.append(code)
         self.send_response(self.iopub_socket, 'stream', {'name': 'stdout', 'text': 'Add data in memory'})
-
 
     def _execute_workflow(self, code) -> Optional[Exception]:
         self._cwl_executor.set_data(self._yaml_input_data)
@@ -95,10 +103,8 @@ class CWLKernel(Kernel):
             self.send_response(self.iopub_socket, 'stream', {'name': 'stderr', 'text': str(exception)})
             return exception
 
-
     def get_past_results(self) -> List[str]:
         return self._results_manager.get_files()
-
 
     def _is_cwl(self, code: Dict):
         return 'cwlVersion' in code.keys()
@@ -108,6 +114,7 @@ class CWLKernel(Kernel):
         :return: The process id and his parents id
         """
         return self._pid
+
 
 if __name__ == '__main__':
     from ipykernel.kernelapp import IPKernelApp

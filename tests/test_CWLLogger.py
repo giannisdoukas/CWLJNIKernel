@@ -2,13 +2,16 @@ import json
 import os
 import socket
 import unittest
-
+import tempfile
 from cwlkernel.CWLLogger import CWLLogger
 
 
 class TestCWLLogger(unittest.TestCase):
+
+    tmp_dir = tempfile.mkdtemp()
+
     def test_get_infrastructure_metrics(self):
-        logger = CWLLogger()
+        logger = CWLLogger(self.tmp_dir)
         metrics = logger.collect_infrastructure_metrics()
         self.assertIsNotNone(metrics.cpu_metrics)
         self.assertIsNotNone(metrics.vmemory_metrics)
@@ -16,14 +19,14 @@ class TestCWLLogger(unittest.TestCase):
         self.assertIsNotNone(metrics.disk_usage)
 
     def test_get_hostname(self):
-        logger = CWLLogger()
+        logger = CWLLogger(self.tmp_dir)
         hostname = logger.get_hostname()
         self.assertEqual(hostname, socket.gethostname())
         self.assertTrue(len(hostname) > 0)
         self.assertIsInstance(hostname, str)
 
     def test_to_dict(self):
-        logger = CWLLogger()
+        logger = CWLLogger(self.tmp_dir)
         dict_log = logger.to_dict()
         import jsonschema
         schema_path = os.path.join(
