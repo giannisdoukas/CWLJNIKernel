@@ -1,5 +1,5 @@
 import os
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 
 from ipykernel.kernelbase import Kernel
 from ruamel.yaml import YAML
@@ -30,6 +30,8 @@ class CWLKernel(Kernel):
         self._results_manager = IOFileManager(os.sep.join([conf.CWLKERNEL_BOOT_DIRECTORY, 'results']))
         runtime_file_manager = IOFileManager(os.sep.join([conf.CWLKERNEL_BOOT_DIRECTORY, 'runtime_data']))
         self._cwl_executor = CoreExecutor(runtime_file_manager)
+        self._pid = (os.getpid(), os.getppid())
+
 
     def _code_is_valid_yaml(self, code) -> Optional[Dict]:
         yaml = YAML(typ='safe')
@@ -101,6 +103,11 @@ class CWLKernel(Kernel):
     def _is_cwl(self, code: Dict):
         return 'cwlVersion' in code.keys()
 
+    def get_pid(self) -> Tuple[int, int]:
+        """
+        :return: The process id and his parents id
+        """
+        return self._pid
 
 if __name__ == '__main__':
     from ipykernel.kernelapp import IPKernelApp

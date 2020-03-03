@@ -1,7 +1,8 @@
 import json
 import os
-import unittest
 import socket
+import unittest
+
 from cwlkernel.CWLLogger import CWLLogger
 
 
@@ -34,3 +35,15 @@ class TestCWLLogger(unittest.TestCase):
         with open(schema_path) as f:
             schema = json.load(f)
         jsonschema.validate(dict_log, schema)
+
+    def test_get_running_kernels(self):
+        import subprocess
+        kernel = subprocess.Popen(["python", "-m", "cwlkernel"])
+        pids = []
+        try:
+            pids = CWLLogger.get_running_kernels()
+        except Exception:
+            pass
+        finally:
+            kernel.kill()
+        self.assertIn(kernel.pid, pids)

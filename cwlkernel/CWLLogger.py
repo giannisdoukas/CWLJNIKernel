@@ -1,5 +1,5 @@
 from collections import namedtuple
-from typing import NamedTuple
+from typing import NamedTuple, List
 
 import psutil
 
@@ -43,3 +43,18 @@ class CWLLogger:
             metrics[key] = [{m[0]: {**m[1]._asdict()}} for m in metrics[key]]
         hostname = cls.get_hostname()
         return {**metrics, 'hostname': hostname}
+
+    @classmethod
+    def get_running_kernels(cls) -> List[int]:
+        """
+        :return: A list with the process ids of running kernels
+        """
+        pids = []
+        for process in psutil.process_iter():
+            try:
+                cmdline = process.cmdline()
+                if cmdline[1] == '-m' and cmdline[2] == "cwlkernel":
+                    pids.append(process.pid)
+            except (psutil.AccessDenied, IndexError, psutil.ZombieProcess):
+                continue
+        return pids
