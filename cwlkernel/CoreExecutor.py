@@ -7,6 +7,7 @@ import os
 import sys
 from codecs import StreamWriter, getwriter
 from io import StringIO
+from pathlib import Path
 from typing import (
     IO,
     Any,
@@ -20,7 +21,7 @@ from typing import (
     Tuple,
     Union,
     cast,
-)
+    NoReturn)
 from uuid import uuid4, UUID
 
 import coloredlogs
@@ -89,7 +90,6 @@ class CoreExecutor:
         except Exception as e:
             return run_id, [], stdout, stderr, e
 
-
     @classmethod
     def _check_workflow_file(cls, args):
         if not args.workflow:
@@ -99,6 +99,17 @@ class CoreExecutor:
                 _logger.error("CWL document required, no input file was provided")
                 arg_parser().print_help()
                 raise RuntimeError("CWL document required, no input file was provided")
+
+    @classmethod
+    def validate_input_files(cls, yaml_input: Dict, cwd: Path) -> NoReturn:
+        for arg in yaml_input:
+            if isinstance(yaml_input[arg], dict) and 'class' in yaml_input[arg] and yaml_input[arg]['class'] == 'File':
+                file_path = Path(yaml_input[arg]['path'])
+                if not file_path.is_absolute():
+                    file_path = cwd / file_path
+                if not file_path.exists():
+                    raise FileNotFoundError(file_path)
+
 
     @classmethod
     def _cwltool_main(cls,
@@ -320,7 +331,6 @@ class CoreExecutor:
                 if status != "success":
                     _logger.warning("Final process status is %s", status)
                     raise RuntimeError("Final process status is %s", status)
-
 
                 _logger.info("Final process status is %s", status)
                 return [output_binding['location'] for output_binding in out.values()]

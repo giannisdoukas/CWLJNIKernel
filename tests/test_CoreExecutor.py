@@ -2,6 +2,7 @@ import os
 import tempfile
 import unittest
 import io
+from pathlib import Path
 
 from cwlkernel.CoreExecutor import CoreExecutor
 from cwlkernel.IOManager import IOFileManager
@@ -38,6 +39,33 @@ class TestCoreExecutor(unittest.TestCase):
             self.assertIsNone(exception, 'An exception occurred while executing workflow')
         except Exception:
             self.fail("execution failed")
+
+    def test_validate_input_files(self):
+        import uuid
+        absolute_file_does_exists = {
+            'example_flag': True,
+            'example_string': 'hello',
+            'example_int': 42,
+            'example_file': {
+                'class': 'File',
+                'path': f'/NOT_EXISTING_FILENAME-{uuid.uuid4()}.txt'
+            }
+        }
+        self.assertRaises(
+            FileNotFoundError, CoreExecutor.validate_input_files, absolute_file_does_exists, Path(self.data_directory)
+        )
+        relative_file_does_exists = {
+            'example_flag': True,
+            'example_string': 'hello',
+            'example_int': 42,
+            'example_file': {
+                'class': 'File',
+                'path': f'NOT_EXISTING_FILENAME-{uuid.uuid4()}.txt'
+            }
+        }
+        self.assertRaises(
+            FileNotFoundError, CoreExecutor.validate_input_files, relative_file_does_exists, Path(self.data_directory)
+        )
 
 
 if __name__ == '__main__':
