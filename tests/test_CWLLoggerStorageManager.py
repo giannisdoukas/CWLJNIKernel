@@ -2,13 +2,14 @@ import json
 import os
 import tempfile
 import unittest
-from typing import List, Dict
 
-from cwlkernel.CWLLoggerStorageManager import CWLLoggerStorageManager
 from cwlkernel.CWLLogger import CWLLogger
+from cwlkernel.CWLLoggerStorageManager import CWLLoggerStorageManager
 
 
 class TestCWLLoggerStorageManager(unittest.TestCase):
+
+    maxDiff = None
 
     def test_load(self):
         storage_path = tempfile.mkdtemp()

@@ -2,6 +2,7 @@ import unittest
 import os
 from cwlkernel.CWLExecuteConfigurator import CWLExecuteConfigurator
 
+
 class TestCWLExecuteConfigurator(unittest.TestCase):
     def test_load_CWLKERNEL_MODE(self):
         conf = CWLExecuteConfigurator()
@@ -13,7 +14,6 @@ class TestCWLExecuteConfigurator(unittest.TestCase):
 
         os.environ['CWLKERNEL_MODE'] = 'something new'
         self.assertRaises(RuntimeError, CWLExecuteConfigurator)
-
 
     def test_load_CWLKERNEL_BOOT_DIRECTORY(self):
         conf = CWLExecuteConfigurator()
@@ -34,6 +34,7 @@ class TestCWLExecuteConfigurator(unittest.TestCase):
             os.environ.pop('CWLKERNEL_MODE')
         except KeyError:
             pass
+
 
 if __name__ == '__main__':
     unittest.main()

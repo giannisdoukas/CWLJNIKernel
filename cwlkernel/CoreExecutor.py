@@ -495,7 +495,6 @@ class CoreExecutor:
 
     @classmethod
     def _init_cwl_logger(cls, logger_handler, stderr):
-        # _logger.removeHandler(defaultStreamHandler)
         stderr_handler = logger_handler
         if stderr_handler is not None:
             _logger.addHandler(stderr_handler)
