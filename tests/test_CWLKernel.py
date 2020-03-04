@@ -183,9 +183,16 @@ class TestCWLKernel(unittest.TestCase):
             {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
             kernel.do_execute(workflow_str, False)
         )
+        import uuid
+        input_with_missing_file = StringIO()
+        yaml.dump({"missing_file": {"class": "File", "path": f"/{uuid.uuid4()}"}}, input_with_missing_file)
+        response = kernel.do_execute(input_with_missing_file.getvalue())
+        self.assertDictEqual(
+            {'status': 'error', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            response
+        )
 
-        os.chdir(tmp_dir)
-        data['example_file']['path'] = os.path.basename(data['example_file']['path'])
+
 
     def test_all_magic_commands_have_methods(self):
         kernel = CWLKernel()

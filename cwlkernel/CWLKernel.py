@@ -86,12 +86,17 @@ class CWLKernel(Kernel):
         exception = None
 
         if not self._is_cwl(dict_code):
-            self._accumulate_data(code)
+            exception = self._accumulate_data(code)
         else:
             exception = self._execute_workflow(code)
             self._clear_data()
 
         status = 'ok' if exception is None else 'error'
+        if exception is not None:
+            self.send_response(
+                self.iopub_socket, 'stream',
+                {'name': 'stderr', 'text': f'{type(exception).__name__}: {exception}'}
+            )
         return {
             'status': status,
             # The base class increments the execution count
@@ -151,9 +156,12 @@ class CWLKernel(Kernel):
             }
         )
 
-    def _accumulate_data(self, code: str):
+    def _accumulate_data(self, code: str) -> Optional[Exception]:
         cwl = self._cwl_executor.file_manager.get_files_uri().path
-        self._cwl_executor.validate_input_files(yaml.load(code, Loader=yaml.Loader), cwl)
+        try:
+            self._cwl_executor.validate_input_files(yaml.load(code, Loader=yaml.Loader), cwl)
+        except FileNotFoundError as e:
+            return e
         self._yaml_input_data.append(code)
         self.send_response(self.iopub_socket, 'stream', {'name': 'stdout', 'text': 'Add data in memory'})
 
