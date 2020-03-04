@@ -1,13 +1,13 @@
-import json
 import logging
 import os
+from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 
 from ipykernel.kernelbase import Kernel
+from ruamel import yaml
 from ruamel.yaml import YAML
 
 from cwlkernel.CWLLogger import CWLLogger
-from cwlkernel.CWLLoggerStorageManager import CWLLoggerStorageManager
 from .CWLExecuteConfigurator import CWLExecuteConfigurator
 from .CoreExecutor import CoreExecutor
 from .IOManager import IOFileManager
@@ -89,6 +89,7 @@ class CWLKernel(Kernel):
             self._accumulate_data(code)
         else:
             exception = self._execute_workflow(code)
+            self._clear_data()
 
         status = 'ok' if exception is None else 'error'
         return {
@@ -107,7 +108,6 @@ class CWLKernel(Kernel):
 
     def _execute_magic_logs(self, limit=None):
         logger.error('Execute logs magic command')
-        i = 0
         limit_len = len(limit)
         if limit_len == 0:
             limit = None
@@ -115,7 +115,6 @@ class CWLKernel(Kernel):
             limit = limit[0]
         if isinstance(limit, str):
             limit = int(limit)
-
         self.send_response(
             self.iopub_socket,
             'display_data',
@@ -132,11 +131,15 @@ class CWLKernel(Kernel):
                 }
             }
         )
-        return i
 
-    def _accumulate_data(self, code):
+    def _accumulate_data(self, code: str):
+        cwl = self._cwl_executor.file_manager.get_files_uri().path
+        self._cwl_executor.validate_input_files(yaml.load(code, Loader=yaml.Loader), cwl)
         self._yaml_input_data.append(code)
         self.send_response(self.iopub_socket, 'stream', {'name': 'stdout', 'text': 'Add data in memory'})
+
+    def _clear_data(self):
+        self._yaml_input_data = []
 
     def _execute_workflow(self, code) -> Optional[Exception]:
         self._cwl_executor.set_data(self._yaml_input_data)

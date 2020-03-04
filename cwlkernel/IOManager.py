@@ -4,7 +4,7 @@ from os.path import exists
 from typing import List, NoReturn
 from pathlib import Path
 import shutil
-from urllib.parse import urlparse
+from urllib.parse import urlparse, ParseResult
 
 
 class IOFileManager:
@@ -45,3 +45,6 @@ class IOFileManager:
             self._files_registry.add(new_filename)
             new_files.append(new_filename)
         return new_files
+
+    def get_files_uri(self) -> ParseResult:
+        return urlparse(self.ROOT_DIRECTORY, scheme='file')

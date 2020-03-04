@@ -22,6 +22,7 @@ from typing import (
     Union,
     cast,
     NoReturn)
+from urllib.parse import ParseResult
 from uuid import uuid4, UUID
 
 import coloredlogs
@@ -110,9 +111,7 @@ class CoreExecutor:
                 if not file_path.exists():
                     raise FileNotFoundError(file_path)
 
-
-    @classmethod
-    def _cwltool_main(cls,
+    def _cwltool_main(self,
                       argsl: Optional[List[str]] = None,
                       stdin: IO[Any] = sys.stdin,
                       stdout: Optional[Union[TextIO, StreamWriter]] = None,
@@ -134,18 +133,18 @@ class CoreExecutor:
         :param input_required:
         :return: A list of the paths of created files by the workflow
         """
-        stdout = cls._force_utf8_to_stream(stdout)
+        stdout = self._force_utf8_to_stream(stdout)
 
-        stderr_handler = cls._init_cwl_logger(logger_handler, stderr)
+        stderr_handler = self._init_cwl_logger(logger_handler, stderr)
 
         workflowobj = None
         prov_log_handler = None  # type: Optional[logging.StreamHandler]
         try:
-            args, argsl = cls._parse_cwl_options(argsl)
-            runtime_context = cls._init_runtime_context(argsl, args, runtime_context)
+            args, argsl = self._parse_cwl_options(argsl)
+            runtime_context = self._init_runtime_context(argsl, args, runtime_context)
             configure_logging(args, stderr_handler, runtime_context)
             _logger.info(versionstring())
-            cls._check_workflow_file(args)
+            self._check_workflow_file(args)
 
             setup_schema(args, None)
 
@@ -224,7 +223,7 @@ class CoreExecutor:
             if isinstance(tool, int):
                 return tool
 
-            cls._set_runtime_tmp_directories(runtime_context)
+            self._set_runtime_tmp_directories(runtime_context)
 
             if args.cachedir:
                 if args.move_outputs == "move":
@@ -238,7 +237,7 @@ class CoreExecutor:
                 runtime_context.make_fs_access, StdFsAccess
             )
 
-            real_executor = cls._init_job_executor(args, runtime_context)
+            real_executor = self._init_job_executor(args, runtime_context)
 
             try:
                 runtime_context.basedir = input_basedir
@@ -260,9 +259,10 @@ class CoreExecutor:
                     if not job_order_object:
                         job_order_object = None
 
-                initialized_job_order_object = cls._init_job_order(args, input_basedir, input_required,
-                                                                   job_order_object, jobloader, runtime_context, stdout,
-                                                                   tool)
+                initialized_job_order_object = self._init_job_order(args, input_basedir, input_required,
+                                                                    job_order_object, jobloader, runtime_context,
+                                                                    stdout,
+                                                                    tool)
 
                 conf_file = getattr(
                     args, "beta_dependency_resolvers_configuration", None
@@ -447,31 +447,30 @@ class CoreExecutor:
         return real_executor
 
     @classmethod
-    def _init_runtime_context(cls, argsl, args, runtimeContext):
-        runtimeContext = RuntimeContext(vars(args)) if runtimeContext is None else runtimeContext.copy()
+    def _init_runtime_context(cls, argsl, args, runtime_context):
+        runtime_context = RuntimeContext(vars(args)) if runtime_context is None else runtime_context.copy()
         # If on Windows platform, a default Docker Container is used if not
         # explicitely provided by user
-        if onWindows() and not runtimeContext.default_container:
+        if onWindows() and not runtime_context.default_container:
             # This docker image is a minimal alpine image with bash installed
             # (size 6 mb). source: https://github.com/frol/docker-alpine-bash
-            runtimeContext.default_container = windows_default_container_id
+            runtime_context.default_container = windows_default_container_id
 
         if args.provenance:
             if argsl is None:
                 raise Exception("argsl cannot be None")
-            if setup_provenance(args, argsl, runtimeContext) is not None:
+            if setup_provenance(args, argsl, runtime_context) is not None:
                 return 1
 
-        return runtimeContext
+        return runtime_context
 
-    @classmethod
-    def _parse_cwl_options(cls, argsl):
+    def _parse_cwl_options(self, argsl):
         if argsl is None:
             argsl = sys.argv[1:]
         addl = []  # type: List[str]
         if "CWLTOOL_OPTIONS" in os.environ:
             addl = os.environ["CWLTOOL_OPTIONS"].split(" ")
-        args = arg_parser().parse_args(addl + argsl)
+        args = arg_parser().parse_args(addl + ["--outdir", self.file_manager.ROOT_DIRECTORY] + argsl)
         if args.record_container_id:
             if not args.cidfile_dir:
                 args.cidfile_dir = os.getcwd()

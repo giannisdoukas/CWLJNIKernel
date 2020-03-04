@@ -3,6 +3,9 @@ import os
 import tarfile
 import tempfile
 import unittest
+from io import StringIO
+
+from ruamel import yaml
 
 
 class TestCWLKernel(unittest.TestCase):
@@ -43,7 +46,7 @@ class TestCWLKernel(unittest.TestCase):
         with open(os.sep.join([self.cwl_directory, 'extract_tar.cwl'])) as f:
             workflow_str = f.read()
         result = kernel.do_execute(workflow_str, False)
-
+        self.assertEqual('ok', result['status'], f'execution returned an error')
         full_path, basename = [(f, os.path.basename(f)) for f in kernel.get_past_results()][0]
 
         self.assertTrue(full_path.startswith(kernel._results_manager.ROOT_DIRECTORY), 'output is in a wrong directory')
@@ -152,6 +155,36 @@ class TestCWLKernel(unittest.TestCase):
             responses[0]['process_id']['process_id'],
             os.getpid()
         )
+
+    def test_handle_input_data_files(self):
+        from cwlkernel.CWLKernel import CWLKernel
+        kernel = CWLKernel()
+        # cancel send_response
+        kernel.send_response = lambda *args, **kwargs: None
+
+        with open(os.sep.join([self.data_directory, 'input_with_file.yml'])) as f:
+            data = yaml.load(f, Loader=yaml.Loader)
+
+        tmp_dir = tempfile.mkdtemp()
+        data['example_file']['path'] = os.path.join(tmp_dir, 'file.txt')
+        with open(data['example_file']['path'], 'w') as f:
+            f.write('')
+        data_stream = StringIO()
+        yaml.dump(data, data_stream)
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(data_stream.getvalue(), False)
+        )
+        with open(os.sep.join([self.cwl_directory, 'workflow_with_input_file.cwl'])) as f:
+            workflow_str = f.read()
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(workflow_str, False)
+        )
+
+        os.chdir(tmp_dir)
+        data['example_file']['path'] = os.path.basename(data['example_file']['path'])
+
 
 
 if __name__ == '__main__':
