@@ -7,6 +7,8 @@ from io import StringIO
 
 from ruamel import yaml
 
+from cwlkernel.CWLKernel import CWLKernel
+
 
 class TestCWLKernel(unittest.TestCase):
     data_directory: str
@@ -185,6 +187,13 @@ class TestCWLKernel(unittest.TestCase):
         os.chdir(tmp_dir)
         data['example_file']['path'] = os.path.basename(data['example_file']['path'])
 
+    def test_all_magic_commands_have_methods(self):
+        kernel = CWLKernel()
+        for magic in kernel._magic_commands:
+            try:
+                kernel.__getattribute__(f'_execute_magic_{magic}')
+            except AttributeError as e:
+                self.fail(f'Missing function for magic command: {magic}. \nAttribute error raises: {e}')
 
 
 if __name__ == '__main__':

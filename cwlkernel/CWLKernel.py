@@ -26,7 +26,7 @@ class CWLKernel(Kernel):
     }
     banner = "Common Workflow Language"
 
-    _magic_commands = frozenset(['logs'])
+    _magic_commands = frozenset(['logs', 'data'])
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -122,6 +122,25 @@ class CWLKernel(Kernel):
                 'data': {
                     'text/plain': '<IPython.core.display.JSON object>',
                     'application/json': list(self._cwl_logger.load(limit))
+                },
+                'metadata': {
+                    'application/json': {
+                        'expanded': False,
+                        'root': 'root'
+                    }
+                }
+            }
+        )
+
+    def _execute_magic_data(self, *args):
+        data = "<ul>\n" + '\n'.join(
+            [f'\t<li><a href="file://{d}" target="_empty">{d}</a></li>' for d in self.get_past_results()]) + "\n</ul>"
+        self.send_response(
+            self.iopub_socket,
+            'display_data',
+            {
+                'data': {
+                    'text/html': data
                 },
                 'metadata': {
                     'application/json': {
