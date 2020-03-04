@@ -9,6 +9,7 @@ from cwlkernel.CWLLogger import CWLLogger
 class TestCWLLogger(unittest.TestCase):
 
     tmp_dir = tempfile.mkdtemp()
+    maxDiff = None
 
     def test_get_infrastructure_metrics(self):
         logger = CWLLogger(self.tmp_dir)
@@ -50,3 +51,12 @@ class TestCWLLogger(unittest.TestCase):
         finally:
             kernel.kill()
         self.assertIn(kernel.pid, pids)
+
+    def test_get_logs_from_past_kernels(self):
+        new_dir = tempfile.mkdtemp()
+        logger = CWLLogger(new_dir)
+        logger.save()
+        self.assertListEqual(
+            [logger.to_dict()['process_id']],
+            [l['process_id'] for l in logger.load()]
+        )

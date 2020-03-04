@@ -1,8 +1,14 @@
+import json
+import os
 from collections import namedtuple
-from typing import NamedTuple, List
+from typing import NamedTuple, List, Iterator, Dict
+
+import jsonschema
+
 from .CWLLoggerStorageManager import CWLLoggerStorageManager
 import psutil
 
+_schema_full_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'loggerSchema.schema.json')
 
 class CWLLogger:
 
@@ -65,5 +71,21 @@ class CWLLogger:
     def save(self):
         return self._storage_manager.save(self.to_dict())
 
-    def load(self, limit=None):
-        return self._storage_manager.load()
+    def validate(self):
+        with open(_schema_full_path) as f:
+            schema = json.load(f)
+        jsonschema.validate(self.to_dict(), schema)
+        return self
+
+    @classmethod
+    def validate_dictionary(cls, dict_log):
+        with open(_schema_full_path) as f:
+            schema = json.load(f)
+        try:
+            jsonschema.validate(dict_log, schema)
+            return True
+        except jsonschema.ValidationError:
+            return False
+
+    def load(self, limit=None) -> Iterator[Dict]:
+        return self._storage_manager.load(limit)

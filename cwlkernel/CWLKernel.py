@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 from typing import List, Dict, Optional, Tuple
@@ -25,6 +26,8 @@ class CWLKernel(Kernel):
     }
     banner = "Common Workflow Language"
 
+    _magic_commands = frozenset(['logs'])
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         conf = CWLExecuteConfigurator()
@@ -50,17 +53,35 @@ class CWLKernel(Kernel):
         except Exception:
             return None
 
-    def do_execute(self, code: str, silent, store_history: bool = True,
+    def _is_magic_command(self, code: str) -> bool:
+        split_code = code.split()
+        if len(split_code) < 2:
+            return False
+        if code.startswith("% ") and code.split()[1] in self._magic_commands:
+            return True
+        return False
+
+    def do_execute(self, code: str, silent=False, store_history: bool = True,
                    user_expressions=None, allow_stdin: bool = False) -> Dict:
-        dict_code = self._code_is_valid_yaml(code)
-        if dict_code is None:
+        if self._is_magic_command(code):
+            self._execute_magic_command(code)
             return {
-                'status': 'error',
+                'status': 'ok',
                 # The base class increments the execution count
                 'execution_count': self.execution_count,
                 'payload': [],
                 'user_expressions': {},
             }
+        else:
+            dict_code = self._code_is_valid_yaml(code)
+            if dict_code is None:
+                return {
+                    'status': 'error',
+                    # The base class increments the execution count
+                    'execution_count': self.execution_count,
+                    'payload': [],
+                    'user_expressions': {},
+                }
 
         exception = None
 
@@ -77,6 +98,41 @@ class CWLKernel(Kernel):
             'payload': [],
             'user_expressions': {},
         }
+
+    def _execute_magic_command(self, command: str):
+        command = command.split()[1:]
+        command_name = command[0]
+        args = command[1:]
+        getattr(self, f'_execute_magic_{command_name}')(args)
+
+    def _execute_magic_logs(self, limit=None):
+        logger.error('Execute logs magic command')
+        i = 0
+        limit_len = len(limit)
+        if limit_len == 0:
+            limit = None
+        if limit_len > 0:
+            limit = limit[0]
+        if isinstance(limit, str):
+            limit = int(limit)
+
+        self.send_response(
+            self.iopub_socket,
+            'display_data',
+            {
+                'data': {
+                    'text/plain': '<IPython.core.display.JSON object>',
+                    'application/json': list(self._cwl_logger.load(limit))
+                },
+                'metadata': {
+                    'application/json': {
+                        'expanded': False,
+                        'root': 'root'
+                    }
+                }
+            }
+        )
+        return i
 
     def _accumulate_data(self, code):
         self._yaml_input_data.append(code)

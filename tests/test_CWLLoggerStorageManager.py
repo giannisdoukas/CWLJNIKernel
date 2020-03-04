@@ -2,6 +2,8 @@ import json
 import os
 import tempfile
 import unittest
+from typing import List, Dict
+
 from cwlkernel.CWLLoggerStorageManager import CWLLoggerStorageManager
 from cwlkernel.CWLLogger import CWLLogger
 
@@ -55,9 +57,6 @@ class TestCWLLoggerStorageManager(unittest.TestCase):
         self.assertTrue(os.path.isfile(new_file))
         log_data = list(logger_storage_manager.load(1))[0]
         jsonschema.validate(log_data, schema)
-
-    def test_get_logs_from_past_kernels(self):
-        raise NotImplementedError()
 
 
 if __name__ == '__main__':

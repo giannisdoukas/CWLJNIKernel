@@ -128,6 +128,31 @@ class TestCWLKernel(unittest.TestCase):
             'user_expressions': {},
         }, exec_result)
 
+    def test_history_magic_command(self):
+        from cwlkernel.CWLKernel import CWLKernel
+        kernel = CWLKernel()
+        # cancel send_response
+        responses = []
+
+        kernel.send_response = lambda *args, **kwargs: responses.extend(args[2]['data']['application/json'])
+        exec_response = kernel.do_execute('% logs')
+        self.assertDictEqual(
+            {"status": "ok", "execution_count": 0, 'payload': [], 'user_expressions': {}},
+            exec_response
+        )
+        number_of_responses = len(responses)
+        self.assertGreater(number_of_responses, 1)
+        exec_response = kernel.do_execute('% logs 1')
+        self.assertDictEqual(
+            {"status": "ok", "execution_count": 0, 'payload': [], 'user_expressions': {}},
+            exec_response
+        )
+        self.assertEqual(len(responses), number_of_responses + 1)
+        self.assertEqual(
+            responses[0]['process_id']['process_id'],
+            os.getpid()
+        )
+
 
 if __name__ == '__main__':
     unittest.main()
