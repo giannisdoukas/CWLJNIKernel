@@ -21,6 +21,7 @@ class TestCWLExecuteConfigurator(unittest.TestCase):
 
         os.environ['CWLKERNEL_BOOT_DIRECTORY'] = '/tmp/CWLKERNEL_DATA1'
         conf = CWLExecuteConfigurator()
+        os.environ['CWLKERNEL_BOOT_DIRECTORY'] = '/tmp/CWLKERNEL_DATA'
         self.assertEqual(conf.CWLKERNEL_BOOT_DIRECTORY, '/tmp/CWLKERNEL_DATA1')
 
     def test_all_properties_have_default_value(self):
