@@ -12,4 +12,4 @@ outputs:
   example_out:
     type: File
     outputBinding:
-      glob: private/tmp/CWLKERNEL_DATA/runtime_data/hello.txt
+      glob: {example_out}

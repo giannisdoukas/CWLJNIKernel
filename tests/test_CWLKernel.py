@@ -44,7 +44,7 @@ class TestCWLKernel(unittest.TestCase):
         self.assertEqual('ok', result['status'], f'execution returned an error')
 
         with open(os.sep.join([self.cwl_directory, 'extract_tar.cwl'])) as f:
-            workflow_str = f.read()
+            workflow_str = f.read().format(example_out=temp_hello_world_file.name[1:])
         result = kernel.do_execute(workflow_str, False)
         self.assertEqual('ok', result['status'], f'execution returned an error')
         full_path, basename = [(f, os.path.basename(f)) for f in kernel.get_past_results()][0]
