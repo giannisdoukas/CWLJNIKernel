@@ -19,7 +19,7 @@ class CWLLoggerStorageManager:
 
     def load(self, limit=None) -> Iterator[Dict]:
         files = [(os.path.join(self._file_manager.ROOT_DIRECTORY, file),
-                  os.path.getmtime(os.path.join(self._file_manager.ROOT_DIRECTORY, file)))
+                  os.path.getctime(os.path.join(self._file_manager.ROOT_DIRECTORY, file)))
                  for file in
                  os.listdir(self._file_manager.ROOT_DIRECTORY) if
                  os.path.isfile(os.path.join(self._file_manager.ROOT_DIRECTORY, file)) and file.endswith('.json')]
