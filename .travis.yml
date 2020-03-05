@@ -28,7 +28,7 @@ matrix:
         - python3 --version
         - pip3 install virtualenv
         - virtualenv -p python3 venv
-        - source venv
+        - source venv/bin/activate
         - pip3 install -U -r requirements.txt
         - pip3 install -U -r test-requirements.txt
       script: coverage run --source cwlkernel --omit cwlkernel/__main__.py -m unittest discover tests
