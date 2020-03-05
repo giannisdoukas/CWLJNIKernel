@@ -16,17 +16,13 @@ class TestCWLLoggerStorageManager(unittest.TestCase):
         logger_storage = CWLLoggerStorageManager(storage_path)
         cwllogger = CWLLogger(tempfile.mkdtemp())
         data = cwllogger.to_dict()
-        custom_log_fn = os.path.join(storage_path, 'dummy_log_data.kcwl.json')
-        with open(custom_log_fn, 'w') as f:
-            json.dump(data, f, indent=2)
+        logger_storage.save(data)
 
         loaded_logs = list(logger_storage.load())
         self.assertListEqual([data], loaded_logs)
 
-        custom_log_fn2 = os.path.join(storage_path, 'dummy_log_data2.kcwl.json')
-        with open(custom_log_fn2, 'w') as f:
-            data2 = cwllogger.to_dict()
-            json.dump(data2, f, indent=2)
+        data2 = cwllogger.to_dict()
+        logger_storage.save(data2)
         # results are order with modification time so it must be inside
         loaded_logs = list(logger_storage.load())
         d = [data2, data]
@@ -35,10 +31,8 @@ class TestCWLLoggerStorageManager(unittest.TestCase):
             f'Results are not the same: ---------\n{json.dumps(d, indent=2)}\n-------\n{json.dumps(loaded_logs, indent=2)}'
         )
 
-        custom_log_fn3 = os.path.join(storage_path, 'dummy_log_data3.kcwl.json')
-        with open(custom_log_fn3, 'w') as f:
-            data3 = CWLLogger(tempfile.mkdtemp()).to_dict()
-            json.dump(data3, f, indent=2)
+        data3 = CWLLogger(tempfile.mkdtemp()).to_dict()
+        logger_storage.save(data3)
         # results are order with modification time so it must be inside
         loaded_logs = list(logger_storage.load(2))
         self.assertListEqual([data3, data2], loaded_logs)
