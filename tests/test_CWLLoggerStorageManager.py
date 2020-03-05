@@ -29,7 +29,11 @@ class TestCWLLoggerStorageManager(unittest.TestCase):
             json.dump(data2, f, indent=2)
         # results are order with modification time so it must be inside
         loaded_logs = list(logger_storage.load())
-        self.assertListEqual([data2, data], loaded_logs)
+        d = [data2, data]
+        self.assertListEqual(
+            d, loaded_logs,
+            f'Results are not the same: ---------\n{json.dumps(d, indent=2)}\n-------\n{json.dumps(loaded_logs, indent=2)}'
+        )
 
         custom_log_fn3 = os.path.join(storage_path, 'dummy_log_data3.kcwl.json')
         with open(custom_log_fn3, 'w') as f:
