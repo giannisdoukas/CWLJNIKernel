@@ -139,3 +139,4 @@ dmypy.json
 tests/*.tar
 tests/*.txt
 *.txt
+tmp*.json

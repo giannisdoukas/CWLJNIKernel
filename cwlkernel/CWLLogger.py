@@ -14,7 +14,7 @@ _schema_full_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'l
 class CWLLogger:
 
     def __init__(self, root_directory):
-        self.process_id = {"process_id": None, "parent_process_id": None}
+        self.process_id = {"process_id": os.getpid(), "parent_process_id": os.getppid()}
         self._storage_manager = CWLLoggerStorageManager(root_directory)
         self._last_to_dict = None
 
