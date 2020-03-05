@@ -1,6 +1,7 @@
 import json
 import os
 from collections import namedtuple
+from datetime import datetime
 from typing import NamedTuple, List, Iterator, Dict
 
 import jsonschema
@@ -15,6 +16,7 @@ class CWLLogger:
     def __init__(self, root_directory):
         self.process_id = {"process_id": None, "parent_process_id": None}
         self._storage_manager = CWLLoggerStorageManager(root_directory)
+        self._last_to_dict = None
 
     @classmethod
     def collect_infrastructure_metrics(cls) -> NamedTuple:
@@ -43,6 +45,7 @@ class CWLLogger:
         return socket.gethostname()
 
     def to_dict(self):
+        self._last_to_dict = datetime.utcnow().strftime('%Y%b%d%H%M%f')
         metrics = self.collect_infrastructure_metrics()._asdict()
         for key in ['cpu_metrics', 'vmemory_metrics']:
             metrics[key] = {**metrics[key]._asdict()}
@@ -51,7 +54,7 @@ class CWLLogger:
         for key in ['disk_usage']:
             metrics[key] = [{m[0]: {**m[1]._asdict()}} for m in metrics[key]]
         hostname = self.get_hostname()
-        return {**metrics, 'hostname': hostname, **{"process_id": self.process_id}}
+        return {**metrics, 'hostname': hostname, "process_id": self.process_id, 'timestamp': self._last_to_dict}
 
     @classmethod
     def get_running_kernels(cls) -> List[int]:
