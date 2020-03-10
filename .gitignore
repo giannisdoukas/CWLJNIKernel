@@ -140,3 +140,5 @@ tests/*.tar
 tests/*.txt
 *.txt
 tmp*.json
+
+!examples/
