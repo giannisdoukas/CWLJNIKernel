@@ -141,4 +141,4 @@ tests/*.txt
 *.txt
 tmp*.json
 
-!examples/
+!examples/*.ipynb
