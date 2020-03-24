@@ -20,7 +20,7 @@ class TestCoreExecutor(unittest.TestCase):
         cls.cwl_directory = os.sep.join([os.path.dirname(os.path.realpath(__file__)), 'cwl'])
         cls.kernel_root_directory = tempfile.mkdtemp()
 
-    def test_execute(self):
+    def test_executor_execute(self):
         # That tests fails only when is called through PyCharm
         file_manager = IOFileManager(self.kernel_root_directory)
         executor = CoreExecutor(file_manager)
@@ -36,7 +36,7 @@ class TestCoreExecutor(unittest.TestCase):
             self.assertListEqual(new_files, [])
             self.assertIsInstance(stdout, io.IOBase)
             self.assertIsInstance(stderr, io.IOBase)
-            self.assertIsNone(exception, 'An exception occurred while executing workflow')
+            self.assertIsNone(exception, 'An exception occurred while executing workflow', str(exception))
         except Exception:
             self.fail("execution failed")
 
