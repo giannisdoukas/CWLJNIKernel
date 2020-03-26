@@ -168,8 +168,8 @@ class TestCWLKernel(unittest.TestCase):
             data = yaml.load(f, Loader=yaml.Loader)
 
         tmp_dir = tempfile.mkdtemp()
-        data['example_file']['path'] = os.path.join(tmp_dir, 'file.txt')
-        with open(data['example_file']['path'], 'w') as f:
+        data['example_file']['location'] = os.path.join(tmp_dir, 'file.txt')
+        with open(data['example_file']['location'], 'w') as f:
             f.write('')
         data_stream = StringIO()
         yaml.dump(data, data_stream)
@@ -185,7 +185,7 @@ class TestCWLKernel(unittest.TestCase):
         )
         import uuid
         input_with_missing_file = StringIO()
-        yaml.dump({"missing_file": {"class": "File", "path": f"/{uuid.uuid4()}"}}, input_with_missing_file)
+        yaml.dump({"missing_file": {"class": "File", "location": f"/{uuid.uuid4()}"}}, input_with_missing_file)
         response = kernel.do_execute(input_with_missing_file.getvalue())
         self.assertDictEqual(
             {'status': 'error', 'execution_count': 0, 'payload': [], 'user_expressions': {}},

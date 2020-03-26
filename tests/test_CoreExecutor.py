@@ -36,7 +36,7 @@ class TestCoreExecutor(unittest.TestCase):
             self.assertListEqual(new_files, [])
             self.assertIsInstance(stdout, io.IOBase)
             self.assertIsInstance(stderr, io.IOBase)
-            self.assertIsNone(exception, 'An exception occurred while executing workflow', str(exception))
+            self.assertIsNone(exception, 'An exception occurred while executing workflow')
         except Exception:
             self.fail("execution failed")
 
@@ -48,7 +48,7 @@ class TestCoreExecutor(unittest.TestCase):
             'example_int': 42,
             'example_file': {
                 'class': 'File',
-                'path': f'/NOT_EXISTING_FILENAME-{uuid.uuid4()}.txt'
+                'location': f'/NOT_EXISTING_FILENAME-{uuid.uuid4()}.txt'
             }
         }
         self.assertRaises(
@@ -60,7 +60,7 @@ class TestCoreExecutor(unittest.TestCase):
             'example_int': 42,
             'example_file': {
                 'class': 'File',
-                'path': f'NOT_EXISTING_FILENAME-{uuid.uuid4()}.txt'
+                'location': f'NOT_EXISTING_FILENAME-{uuid.uuid4()}.txt'
             }
         }
         self.assertRaises(
