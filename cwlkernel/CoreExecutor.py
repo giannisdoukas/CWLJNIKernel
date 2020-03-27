@@ -1,4 +1,5 @@
 import os
+import subprocess
 import sys
 import traceback
 from io import StringIO
@@ -49,6 +50,9 @@ class CoreExecutor:
         runtime_context = RuntimeContext()
         runtime_context.outdir = self.file_manager.ROOT_DIRECTORY
         runtime_context.basedir = self.file_manager.ROOT_DIRECTORY
+        runtime_context.default_stdin = subprocess.DEVNULL
+        runtime_context.default_stdout = subprocess.DEVNULL
+        runtime_context.default_stderr = subprocess.DEVNULL
         os.chdir(self.file_manager.ROOT_DIRECTORY)
         factory = Factory(runtime_context=runtime_context)
         executable = factory.make(self._workflow_path)
