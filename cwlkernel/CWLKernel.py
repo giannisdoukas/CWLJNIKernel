@@ -1,6 +1,5 @@
 import logging
 import os
-from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 
 from ipykernel.kernelbase import Kernel
@@ -82,8 +81,6 @@ class CWLKernel(Kernel):
                     'payload': [],
                     'user_expressions': {},
                 }
-
-        exception = None
 
         if not self._is_cwl(dict_code):
             exception = self._accumulate_data(code)
@@ -172,18 +169,29 @@ class CWLKernel(Kernel):
         self._cwl_executor.set_data(self._yaml_input_data)
         self._cwl_executor.set_workflow(code)
         logger.debug('starting executing workflow ...')
-        run_id, new_files, stdout, stderr, exception = self._cwl_executor.execute()
-        logger.debug(f'\texecution results: {run_id}, {new_files}, {stdout}, {stderr}, {exception}')
+        run_id, results, stdout, stderr, exception = self._cwl_executor.execute()
+        logger.debug(f'\texecution results: {run_id}, {results}, {stdout}, {stderr}, {exception}')
         output_directory_for_that_run = str(run_id)
-        self._results_manager.append_files(new_files, output_directory_for_that_run)
-        stdout = stdout.getvalue()
-        stderr = stderr.getvalue()
-        if len(stdout) > 0:
-            logger.debug(f'execute stdout: {stdout}')
-            self.send_response(self.iopub_socket, 'stream', {'name': 'stdout', 'text': stdout})
-        if len(stderr) > 0:
-            logger.debug(f'execute stderr: {stderr}')
-            self.send_response(self.iopub_socket, 'stream', {'name': 'stderr', 'text': stderr})
+        self._results_manager.append_files(
+            [f['location'] for f in results.values()],
+            output_directory_for_that_run
+        )
+        self.send_response(
+            self.iopub_socket,
+            'display_data',
+            {
+                'data': {
+                    'text/plain': '<IPython.core.display.JSON object>',
+                    'application/json': results
+                },
+                'metadata': {
+                    'application/json': {
+                        'expanded': False,
+                        'root': 'root'
+                    }
+                }
+            }
+        )
         if exception is not None:
             logger.debug(f'execution error: {exception}')
             self.send_response(self.iopub_socket, 'stream', {'name': 'stderr', 'text': str(exception)})
