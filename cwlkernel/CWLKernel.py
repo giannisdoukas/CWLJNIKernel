@@ -207,6 +207,7 @@ class CWLKernel(Kernel):
         logger.debug(f'\texecution results: {run_id}, {results}, {stdout}, {stderr}, {exception}')
         output_directory_for_that_run = str(run_id)
         for output in results:
+            logger.info(f'output result: {results}')
             results[output]['id'] = output
             self._results_manager.append_files(
                 [results[output]['location']],

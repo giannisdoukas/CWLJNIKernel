@@ -133,7 +133,7 @@ class TestCWLKernel(unittest.TestCase):
         )
         kernel.do_execute('% display_data')
         self.assertEqual(
-            'ERROR: you must select an output to display. Correct format:\n % display_output [output name]',
+            'ERROR: you must select an output to display. Correct format:\n % display_data [output name]',
             responses[-1][0][2]['text']
         )
 
