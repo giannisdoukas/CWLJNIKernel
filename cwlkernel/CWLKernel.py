@@ -110,7 +110,7 @@ class CWLKernel(Kernel):
 
     def _execute_magic_display_data(self, data_name):
         if len(data_name) != 1 or not isinstance(data_name[0], str):
-            self._send_error_response('ERROR: you must select an output to display. Correct format:\n % display_output [output name]')
+            self._send_error_response('ERROR: you must select an output to display. Correct format:\n % display_data [output name]')
             return
         results = list(filter(lambda item: item[1]['id'] == data_name[0], self._results_manager.get_files_registry().items()))
         if len(results) != 1:
