@@ -112,6 +112,37 @@ class TestCWLKernel(unittest.TestCase):
             kernel.do_execute(workflow_str, False)
         )
 
+    def test_display_data_magic_command(self):
+        from cwlkernel.CWLKernel import CWLKernel
+        kernel = CWLKernel()
+        # monitor responses
+        responses = []
+        kernel.send_response = lambda *args, **kwargs: responses.append((args, kwargs))
+
+        with open(os.sep.join([self.data_directory, 'echo-job.yml'])) as f:
+            data = f.read()
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(data, False)
+        )
+        with open(os.sep.join([self.cwl_directory, 'echo_stdout.cwl'])) as f:
+            workflow_str = f.read()
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(workflow_str, False)
+        )
+        kernel.do_execute('% display_data')
+        self.assertEqual(
+            'ERROR: you must select an output to display. Correct format:\n % display_output [output name]',
+            responses[-1][0][2]['text']
+        )
+
+        kernel.do_execute('% display_data echo_output')
+        self.assertEqual(
+            'Hello world!\n',
+            responses[-1][0][2]['text']
+        )
+
     def test_send_invalid_yaml(self):
         from cwlkernel.CWLKernel import CWLKernel
         kernel = CWLKernel()
@@ -235,7 +266,8 @@ class TestCWLKernel(unittest.TestCase):
                              'location': f'file://{tar_directory}/hello.txt', 'basename': 'hello.txt',
                              'nameroot': 'hello', 'nameext': '.txt', 'class': 'File',
                              'checksum': 'sha1$2aae6c35c94fcfb415dbe95f408b9ce91ee846ed', 'size': 11,
-                             'http://commonwl.org/cwltool#generation': 0
+                             'http://commonwl.org/cwltool#generation': 0,
+                             'id': 'example_out'
                          }
                      }
                  },

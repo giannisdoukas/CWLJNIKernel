@@ -1,11 +1,11 @@
 import os
+import shutil
 from os import makedirs
 from os.path import exists
-from typing import List, NoReturn
 from pathlib import Path
-import shutil
+from typing import List, Dict, Optional
 from urllib.parse import urlparse, ParseResult
-
+from copy import deepcopy
 
 class IOFileManager:
     ROOT_DIRECTORY: str
@@ -15,7 +15,7 @@ class IOFileManager:
         if not exists(root_directory):
             makedirs(root_directory)
         self.ROOT_DIRECTORY = root_directory
-        self._files_registry = set()
+        self._files_registry = {}
 
     def read(self, relative_path: str) -> bytes:
         full_path = os.path.join(self.ROOT_DIRECTORY, relative_path)
@@ -24,17 +24,25 @@ class IOFileManager:
             text = f.read()
         return text
 
-    def write(self, relative_path: str, binary_data: bytes) -> str:
+    def write(self, relative_path: str, binary_data: bytes, metadata=None) -> str:
         real_path = os.path.realpath(os.path.join(self.ROOT_DIRECTORY, relative_path))
         with open(real_path, 'wb') as f:
-            self._files_registry.add(real_path)
+            self._files_registry[real_path] = metadata if metadata is not None else {}
             f.write(binary_data)
         return real_path
 
     def get_files(self) -> List[str]:
         return list(self._files_registry)
 
-    def append_files(self, files_to_copy: List[str], relative_path: str = '.') -> List[str]:
+    def get_files_registry(self) -> Dict:
+        return deepcopy(self._files_registry)
+
+    def append_files(
+            self,
+            files_to_copy: List[str],
+            relative_path: str = '.',
+            metadata: Optional[Dict] = None
+    ) -> List[str]:
         real_path = os.path.realpath(os.path.join(self.ROOT_DIRECTORY, relative_path))
         Path(real_path).mkdir(parents=True, exist_ok=True)
         new_files = []
@@ -42,7 +50,7 @@ class IOFileManager:
             p = urlparse(p).path
             new_filename = os.sep.join([real_path, os.path.basename(p)])
             shutil.copyfile(p, new_filename)
-            self._files_registry.add(new_filename)
+            self._files_registry[new_filename] = metadata if metadata is not None else {}
             new_files.append(new_filename)
         return new_files
 

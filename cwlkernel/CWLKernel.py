@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional, Tuple, Union
 
 from ipykernel.kernelbase import Kernel
 from ruamel import yaml
@@ -25,7 +25,7 @@ class CWLKernel(Kernel):
     }
     banner = "Common Workflow Language"
 
-    _magic_commands = frozenset(['logs', 'data'])
+    _magic_commands = frozenset(['logs', 'data', 'display_data'])
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -108,6 +108,40 @@ class CWLKernel(Kernel):
         args = command[1:]
         getattr(self, f'_execute_magic_{command_name}')(args)
 
+    def _execute_magic_display_data(self, data_name):
+        if len(data_name) != 1 or not isinstance(data_name[0], str):
+            self._send_error_response('ERROR: you must select an output to display. Correct format:\n % display_output [output name]')
+            return
+        results = list(filter(lambda item: item[1]['id'] == data_name[0], self._results_manager.get_files_registry().items()))
+        if len(results) != 1:
+            self.send_response(self.iopub_socket, 'stream', {'name': 'stderr', 'text': 'Result not found'})
+            return
+        results = results[0]
+        with open(results[0]) as f:
+            data = f.read()
+        self.send_response(self.iopub_socket, 'stream', {'name': 'stdout', 'text': data})
+
+    def _send_error_response(self, text):
+        self.send_response(self.iopub_socket, 'stream', {'name': 'stdout', 'text': text})
+
+    def _send_json_response(self, json_data: Union[Dict,List]):
+        self.send_response(
+            self.iopub_socket,
+            'display_data',
+            {
+                'data': {
+                    'text/plain': '<IPython.core.display.JSON object>',
+                    'application/json': json_data
+                },
+                'metadata': {
+                    'application/json': {
+                        'expanded': False,
+                        'root': 'root'
+                    }
+                }
+            }
+        )
+
     def _execute_magic_logs(self, limit=None):
         logger.error('Execute logs magic command')
         limit_len = len(limit)
@@ -172,10 +206,13 @@ class CWLKernel(Kernel):
         run_id, results, stdout, stderr, exception = self._cwl_executor.execute()
         logger.debug(f'\texecution results: {run_id}, {results}, {stdout}, {stderr}, {exception}')
         output_directory_for_that_run = str(run_id)
-        self._results_manager.append_files(
-            [f['location'] for f in results.values()],
-            output_directory_for_that_run
-        )
+        for output in results:
+            results[output]['id'] = output
+            self._results_manager.append_files(
+                [results[output]['location']],
+                output_directory_for_that_run,
+                metadata=results[output]
+            )
         self.send_response(
             self.iopub_socket,
             'display_data',
