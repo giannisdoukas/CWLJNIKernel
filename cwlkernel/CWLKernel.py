@@ -207,13 +207,21 @@ class CWLKernel(Kernel):
         logger.debug(f'\texecution results: {run_id}, {results}, {stdout}, {stderr}, {exception}')
         output_directory_for_that_run = str(run_id)
         for output in results:
-            logger.info(f'output result: {results}')
-            results[output]['id'] = output
-            self._results_manager.append_files(
-                [results[output]['location']],
-                output_directory_for_that_run,
-                metadata=results[output]
-            )
+            if isinstance(results[output], list):
+                for i, output_i in enumerate(results[output]):
+                    results[output][i]['id'] = f'{output}_{i+1}'
+                    self._results_manager.append_files(
+                        [results[output][i]['location']],
+                        output_directory_for_that_run,
+                        metadata=results[output][i]
+                    )
+            else:
+                results[output]['id'] = output
+                self._results_manager.append_files(
+                    [results[output]['location']],
+                    output_directory_for_that_run,
+                    metadata=results[output]
+                )
         self.send_response(
             self.iopub_socket,
             'display_data',

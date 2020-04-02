@@ -282,5 +282,25 @@ class TestCWLKernel(unittest.TestCase):
             responses[1][0]
         )
 
+
+    def test_array_output(self):
+        from cwlkernel.CWLKernel import CWLKernel
+        kernel = CWLKernel()
+        # cancel send_response
+        kernel.send_response = lambda *args, **kwargs: None
+        with open(os.sep.join([self.data_directory, 'array-outputs-job.yml'])) as f:
+            data = f.read()
+        with open(os.sep.join([self.cwl_directory, 'array-outputs.cwl'])) as f:
+            workflow_str = f.read()
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(data)
+        )
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(workflow_str)
+        )
+
+
     if __name__ == '__main__':
         unittest.main()
