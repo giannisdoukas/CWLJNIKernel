@@ -1,3 +1,5 @@
+.idea/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -132,3 +134,11 @@ dmypy.json
 
 # pytype static type analyzer
 .pytype/
+!/.ipynb_checkpoints/
+*.ipynb
+tests/*.tar
+tests/*.txt
+*.txt
+tmp*.json
+
+!examples/*.ipynb

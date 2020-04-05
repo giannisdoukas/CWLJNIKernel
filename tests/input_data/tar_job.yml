@@ -1,0 +1,4 @@
+tarfile:
+  class: File
+  # set the filename in the script
+  location: tarfile.tar

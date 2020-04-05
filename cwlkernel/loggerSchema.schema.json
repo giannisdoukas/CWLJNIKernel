@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CWLKernel Logger Schema",
+  "type": "object",
+  "properties": {
+    "infrastructure_metrics": {
+      "type": "object",
+      "properties": {
+        "cpu_metrics": {
+          "type": "object",
+          "properties": {
+            "idle": {
+              "type": "number"
+            },
+            "nice": {
+              "type": "number"
+            },
+            "system": {
+              "type": "number"
+            },
+            "user": {
+              "type": "number"
+            }
+          }
+        },
+        "vmemory_metrics": {
+          "type": "object",
+          "properties": {
+            "active": {
+              "type": "number"
+            },
+            "available": {
+              "type": "number"
+            },
+            "free": {
+              "type": "number"
+            },
+            "percent": {
+              "type": "number"
+            },
+            "total": {
+              "type": "number"
+            },
+            "used": {
+              "type": "number"
+            },
+            "wired": {
+              "type": "number"
+            }
+          }
+        },
+        "disk_partition": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "device": {
+                "type": "string"
+              },
+              "mountpoint": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "disk_usage": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "required": ["cpu_metrics", "vmemory_metrics", "disk_partition", "disk_usage"]
+    },
+    "hostname": {
+      "type": "string"
+    },
+    "process_id": {
+      "process_id": {"type": "number", "minimum": 0, "multipleOf": 1},
+      "parent_process_id": {"type": "number", "minimum": 0, "multipleOf": 1}
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "argv": [
+    "python",
+    "-m",
+    "cwlkernel",
+    "-f",
+    "{connection_file}"
+  ],
+  "display_name": "Common Workflow Languages",
+  "language": "cwl"
+}
