@@ -38,14 +38,11 @@ class CoreExecutor:
         self._workflow_path = self.file_manager.write(f'{str(uuid4())}.cwl', workflow_str.encode())
         return self._workflow_path
 
-    def execute(self) -> Tuple[UUID, Dict, StringIO, StringIO, Optional[Exception]]:
+    def execute(self) -> Tuple[UUID, Dict, Optional[Exception]]:
         """
-        :return: Run ID, List of new files, stdout, stderr, exception if there is any
+        :return: Run ID, dict with new files, exception if there is any
         """
         run_id = uuid4()
-        # args = [self._workflow_path, *self._data_paths]
-        stdout = StringIO()
-        stderr = StringIO()
 
         runtime_context = RuntimeContext()
         runtime_context.outdir = self.file_manager.ROOT_DIRECTORY
@@ -63,10 +60,10 @@ class CoreExecutor:
                 data = {**new_data, **data}
         try:
             result: Dict = executable(**data)
-            return run_id, result, stdout, stderr, None
+            return run_id, result, None
         except Exception as e:
             traceback.print_exc(file=sys.stderr)
-            return run_id, {}, stdout, stderr, e
+            return run_id, {}, e
 
     @classmethod
     def validate_input_files(cls, yaml_input: Dict, cwd: Path) -> NoReturn:

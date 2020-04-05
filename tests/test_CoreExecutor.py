@@ -31,11 +31,9 @@ class TestCoreExecutor(unittest.TestCase):
             data_str = f.read()
         executor.set_data([data_str])
         try:
-            execution_id, new_files, stdout, stderr, exception = executor.execute()
+            execution_id, new_files, exception = executor.execute()
             self.assertIsNotNone(execution_id)
             self.assertDictEqual(new_files, {})
-            self.assertIsInstance(stdout, io.IOBase)
-            self.assertIsInstance(stderr, io.IOBase)
             self.assertIsNone(exception, 'An exception occurred while executing workflow')
         except Exception:
             self.fail("execution failed")

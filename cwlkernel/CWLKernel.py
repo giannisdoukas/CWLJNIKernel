@@ -203,8 +203,8 @@ class CWLKernel(Kernel):
         self._cwl_executor.set_data(self._yaml_input_data)
         self._cwl_executor.set_workflow(code)
         logger.debug('starting executing workflow ...')
-        run_id, results, stdout, stderr, exception = self._cwl_executor.execute()
-        logger.debug(f'\texecution results: {run_id}, {results}, {stdout}, {stderr}, {exception}')
+        run_id, results, exception = self._cwl_executor.execute()
+        logger.debug(f'\texecution results: {run_id}, {results}, {exception}')
         output_directory_for_that_run = str(run_id)
         for output in results:
             if isinstance(results[output], list):
