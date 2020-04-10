@@ -2,6 +2,8 @@
 
 [![Build Status](https://travis-ci.com/giannisdoukas/CWLJNIKernel.svg)](https://travis-ci.com/giannisdoukas/CWLJNIKernel)
 [![Coverage Status](https://coveralls.io/repos/github/giannisdoukas/CWLJNIKernel/badge.svg?t=AHSikx)](https://coveralls.io/github/giannisdoukas/CWLJNIKernel)
+[![Gitter chat](https://badges.gitter.im/CWLJNIKernel/gitter.png)](https://gitter.im/CWLJNIKernel/community)
+
 
 This is a jupyter notebook kernel which enables running Common Workflow Language. It uses 
 [cwltool](https://github.com/common-workflow-language/cwltool) as the execution engine. The goal of the kernel is to 
