@@ -110,9 +110,12 @@ class CWLKernel(Kernel):
 
     def _execute_magic_display_data(self, data_name):
         if len(data_name) != 1 or not isinstance(data_name[0], str):
-            self._send_error_response('ERROR: you must select an output to display. Correct format:\n % display_data [output name]')
+            self._send_error_response(
+                'ERROR: you must select an output to display. Correct format:\n % display_data [output name]'
+            )
             return
-        results = list(filter(lambda item: item[1]['id'] == data_name[0], self._results_manager.get_files_registry().items()))
+        results = list(
+            filter(lambda item: item[1]['id'] == data_name[0], self._results_manager.get_files_registry().items()))
         if len(results) != 1:
             self.send_response(self.iopub_socket, 'stream', {'name': 'stderr', 'text': 'Result not found'})
             return
@@ -124,7 +127,7 @@ class CWLKernel(Kernel):
     def _send_error_response(self, text):
         self.send_response(self.iopub_socket, 'stream', {'name': 'stdout', 'text': text})
 
-    def _send_json_response(self, json_data: Union[Dict,List]):
+    def _send_json_response(self, json_data: Union[Dict, List]):
         self.send_response(
             self.iopub_socket,
             'display_data',
@@ -209,7 +212,7 @@ class CWLKernel(Kernel):
         for output in results:
             if isinstance(results[output], list):
                 for i, output_i in enumerate(results[output]):
-                    results[output][i]['id'] = f'{output}_{i+1}'
+                    results[output][i]['id'] = f'{output}_{i + 1}'
                     self._results_manager.append_files(
                         [results[output][i]['location']],
                         output_directory_for_that_run,

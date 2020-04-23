@@ -1,20 +1,18 @@
 from typing import Dict, Tuple, Callable
 import os
 
+
 # TODO: use tempfile for windows compatibility
 
 class CWLExecuteConfigurator:
-
     CWLKERNEL_MODE: str
     CWLKERNEL_BOOT_DIRECTORY: str
 
     # property "Name of the property": ("default", validator)
     properties: Dict[str, Tuple[str, Callable]] = {
-        'CWLKERNEL_MODE': ('SIMPLE', lambda value: value.upper() in {'SIMPLE'}), # no case sensitive
+        'CWLKERNEL_MODE': ('SIMPLE', lambda value: value.upper() in {'SIMPLE'}),  # no case sensitive
         'CWLKERNEL_BOOT_DIRECTORY': ('/tmp/CWLKERNEL_DATA', lambda value: True)
     }
-
-
 
     def __init__(self):
         for property, (default_value, validator) in self.properties.items():

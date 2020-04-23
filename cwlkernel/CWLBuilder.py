@@ -9,8 +9,10 @@ class CWLBuilder:
     def __init__(self):
         self._code = ""
 
-    def append(self, code: str, indent: int=0) -> None:
-        code = '\n'.join([''.join([' ' for _ in range(indent)])+line for line in code.splitlines()])
+    def append(self, code: str, indent: int = 0) -> None:
+        code = '\n'. \
+            join([''.join([' ' for _ in range(indent)]) + line
+                  for line in code.splitlines()])
         if self._code == "":
             self._code = str(code)
         else:
