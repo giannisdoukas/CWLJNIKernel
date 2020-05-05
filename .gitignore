@@ -142,3 +142,5 @@ tests/*.txt
 tmp*.json
 
 !examples/*.ipynb
+
+workflow-examples/*
