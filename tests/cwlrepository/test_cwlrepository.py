@@ -2,13 +2,14 @@ import unittest
 from copy import deepcopy
 
 from cwlkernel.cwlrepository.cwlrepository import ToolsRepository, MissingIdError
+from cwlkernel.cwlrepository.cwltool import Tool
 
 
 class CWLRepositoryTestCase(unittest.TestCase):
     maxDiff = None
 
     def test_register_tool(self):
-        tool_to_register = {
+        tool_to_register = Tool({
             "class": "CommandLineTool",
             "label": "Example trivial wrapper for Java 9 compiler",
             "hints": [
@@ -41,7 +42,7 @@ class CWLRepositoryTestCase(unittest.TestCase):
                 }
             ],
             "id": "#arguments.cwl"
-        }
+        })
         repo = ToolsRepository()
         repo.delete()
 
@@ -52,17 +53,17 @@ class CWLRepositoryTestCase(unittest.TestCase):
         self.assertEqual('CommandLineTool', tools[0]['class'])
 
         tool_without_id = deepcopy(tool_to_register)
-        tool_without_id.pop('id')
+        tool_without_id._tool.pop('id')
         with self.assertRaises(MissingIdError):
             repo.register_tool(tool_without_id)
 
         tool_without_input_id = deepcopy(tool_to_register)
-        tool_without_input_id['inputs'][0].pop('id')
+        tool_without_input_id._tool['inputs'][0].pop('id')
         with self.assertRaises(MissingIdError):
             repo.register_tool(tool_without_input_id)
 
         tool_without_outputs_id = deepcopy(tool_to_register)
-        tool_without_outputs_id['outputs'][0].pop('id')
+        tool_without_outputs_id._tool['outputs'][0].pop('id')
         with self.assertRaises(MissingIdError):
             repo.register_tool(tool_without_outputs_id)
 
@@ -137,6 +138,7 @@ class CWLRepositoryTestCase(unittest.TestCase):
                 "cwlVersion": "v1.0"
             }
         ]
+        tools_to_register = [Tool(t) for t in tools_to_register]
         repo = ToolsRepository()
         repo.delete()
 
@@ -145,7 +147,7 @@ class CWLRepositoryTestCase(unittest.TestCase):
         repo.register_tools(*tools_to_register)
 
         tool = repo.get_by_id('#main')
-        self.assertDictEqual(tools_to_register[1], tool)
+        self.assertDictEqual(tools_to_register[1]._tool, tool._tool)
 
 
 if __name__ == '__main__':

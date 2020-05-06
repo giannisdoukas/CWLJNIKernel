@@ -2,23 +2,25 @@ from collections import Iterable
 from copy import deepcopy
 from typing import Dict, Iterator, Optional
 
+from cwlkernel.cwlrepository.cwltool import Tool
+
 
 class ToolsRepository(Iterable):
     class __SingletonToolsRepository__:
-        _registry: Dict
+        _registry: Dict[str, Tool]
 
         def __init__(self):
             self._registry = {}
 
-        def validate(self, tool: Dict):
+        def validate(self, tool: Tool):
             """
             :raises TypeError if the tool is not type of dict
             :raises MissingIdError if there is not id in the tool/inputs/outputs
             :param tool:
             :return:
             """
-            if not isinstance(tool, dict):
-                raise TypeError(f'Tool should be type of dict and not {type(tool)}')
+            if not isinstance(tool, Tool):
+                raise TypeError(f'Tool should be type of Tool and not {type(tool)}')
             if 'id' not in tool:
                 raise MissingIdError('Missing tool\'s id')
             if 'inputs' in tool and 'id':
@@ -30,7 +32,7 @@ class ToolsRepository(Iterable):
                     if 'id' not in output:
                         raise MissingIdError(f'Missing id for outputs: {output}')
 
-        def register_tool(self, tool: Dict) -> None:
+        def register_tool(self, tool: Tool) -> None:
             self.validate(tool)
             if tool['id'] in self._registry:
                 raise KeyError(f'Dublicate key error: {tool["id"]}')

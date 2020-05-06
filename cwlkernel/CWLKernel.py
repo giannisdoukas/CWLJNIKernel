@@ -45,7 +45,7 @@ class CWLKernel(Kernel):
             "parent_process_id": os.getppid()
         }
 
-    def _code_is_valid_yaml(self, code) -> Optional[Dict]:
+    def _code_is_valid_yaml(self, code: str) -> Optional[Dict]:
         yaml = YAML(typ='safe')
         try:
             return yaml.load(code)
