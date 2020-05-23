@@ -96,6 +96,7 @@ class CWLWorkflow(WorkflowComponent):
     def add_step_in(self, step: str, name: str, connect: Union[str, dict]):
         self._steps[step]['in'][name] = deepcopy(connect)
 
+
 if __name__ == '__main__':
     pass
     # simple: WorkflowComponent = CWLTool({
