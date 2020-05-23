@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from io import StringIO
-from typing import Dict, List
+from typing import Dict, List, Union
 
 import yaml
 
@@ -93,9 +93,10 @@ class CWLWorkflow(WorkflowComponent):
         return yaml_str
 
     def validate(self):
-        # resolve_and_validate_document()
-        pass
+        raise NotImplementedError()
 
+    def add_step_in(self, step: str, name: str, connect: Union[str, dict]):
+        self._steps[step]['in'][name] = deepcopy(connect)
 
 if __name__ == '__main__':
     pass
