@@ -271,6 +271,7 @@ class CWLKernel(Kernel):
         """
         return self._pid
 
+
 if __name__ == '__main__':
     from ipykernel.kernelapp import IPKernelApp
 
