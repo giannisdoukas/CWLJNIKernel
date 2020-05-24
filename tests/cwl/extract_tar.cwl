@@ -3,6 +3,7 @@
 cwlVersion: v1.0
 class: CommandLineTool
 baseCommand: [tar, --extract, --verbose]
+id: extract-tar
 inputs:
   tarfile:
     type: File

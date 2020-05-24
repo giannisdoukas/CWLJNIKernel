@@ -3,6 +3,7 @@
 cwlVersion: v1.0
 class: CommandLineTool
 baseCommand: touch
+id: touch
 inputs:
   touchfiles:
     type:

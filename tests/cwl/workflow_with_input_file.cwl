@@ -2,6 +2,7 @@
 cwlVersion: v1.0
 class: CommandLineTool
 baseCommand: echo
+id: workflow-with-input-file
 inputs:
   example_flag:
     type: boolean

@@ -1,15 +1,20 @@
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from io import StringIO
-from typing import Dict, List, Union
+from typing import Dict, List, Union, Optional
 
 import yaml
 
 
 class WorkflowComponent(ABC):
 
-    def __init__(self, id: str):
+    def __init__(self, id: str, component: Optional[Dict]):
         self._id = id
+        if component is not None:
+            if isinstance(component['inputs'], Dict):
+                component['inputs'] = self._convert_inputs_from_dict_to_list(component['inputs'])
+            if isinstance(component['outputs'], Dict):
+                component['outputs'] = self._convert_inputs_from_dict_to_list(component['outputs'])
 
     @property
     def id(self):
@@ -19,11 +24,29 @@ class WorkflowComponent(ABC):
     def to_yaml(self) -> str:
         pass
 
+    @property
+    @abstractmethod
+    def inputs(self) -> List[Dict]:
+        pass
+
+    @property
+    @abstractmethod
+    def outputs(self) -> List[Dict]:
+        pass
+
+    @classmethod
+    def _convert_inputs_from_dict_to_list(cls, inputs: Dict) -> List[Dict]:
+        return [{'id': id, **cwl_input} for id, cwl_input in inputs.items()]
+
+    @classmethod
+    def _convert_outputs_from_dict_to_list(cls, outputs: Dict) -> List[Dict]:
+        return [{'id': id, **cwl_output} for id, cwl_output in outputs.items()]
+
 
 class CWLTool(WorkflowComponent):
 
     def __init__(self, id: str, command_line_tool: Dict):
-        super().__init__(id)
+        super().__init__(id, command_line_tool)
         self._command_line_tool = command_line_tool
 
     @property
@@ -34,18 +57,35 @@ class CWLTool(WorkflowComponent):
     def command_line_tool(self, command_line_tool: Dict):
         self._command_line_tool = command_line_tool
 
-    def to_yaml(self) -> dict:
-        return self.command_line_tool
+    def to_yaml(self) -> str:
+        yaml_text = StringIO()
+        yaml.dump(self.command_line_tool, yaml_text)
+
+        return yaml_text.getvalue()
+
+    @property
+    def inputs(self) -> List[Dict]:
+        return deepcopy(self._command_line_tool['inputs'])
+
+    @property
+    def outputs(self) -> List[Dict]:
+        return deepcopy(self._command_line_tool['outputs'])
 
 
 class CWLWorkflow(WorkflowComponent):
 
-    def __init__(self, id: str) -> None:
-        super().__init__(id)
-        self._inputs: List[Dict] = []
-        self._outputs: List[Dict] = []
-        self._steps: Dict = {}
-        self._requirements: Dict = {}
+    def __init__(self, id: str, workflow: Optional[Dict] = None) -> None:
+        super().__init__(id, workflow)
+        if workflow is None:
+            self._inputs: List[Dict] = []
+            self._outputs: List[Dict] = []
+            self._steps: Dict = {}
+            self._requirements: Dict = {}
+        else:
+            self._inputs: List[Dict] = deepcopy(workflow['inputs'])
+            self._outputs: List[Dict] = deepcopy(workflow['outputs'])
+            self._steps: Dict = deepcopy(workflow['steps'])
+            self._requirements: Dict = deepcopy(workflow['requirements'])
 
     @property
     def steps(self):
@@ -95,6 +135,25 @@ class CWLWorkflow(WorkflowComponent):
 
     def add_step_in(self, step: str, name: str, connect: Union[str, dict]):
         self._steps[step]['in'][name] = deepcopy(connect)
+
+    @property
+    def inputs(self) -> List[Dict]:
+        return deepcopy(self._inputs)
+
+    @property
+    def outputs(self) -> List[Dict]:
+        return deepcopy(self._outputs)
+
+
+class WorkflowComponentFactory():
+    def get_workflow_component(self, yaml_string: str) -> WorkflowComponent:
+        component = yaml.load(StringIO(yaml_string), yaml.SafeLoader)
+        if component['class'] == 'CommandLineTool':
+            return CWLTool(component['id'], component)
+        elif component['class'] == 'Workflow':
+            return CWLWorkflow(component['id'], component)
+        else:
+            raise NotImplementedError(f"class f{component['class']} is not supported")
 
 
 if __name__ == '__main__':

@@ -5,8 +5,8 @@ from typing import Dict, Iterator, Optional
 from cwlkernel.cwlrepository.CWLComponent import WorkflowComponent
 
 
-class ToolsRepository(Iterable):
-    class __SingletonToolsRepository__:
+class WorkflowRepository(Iterable):
+    class __SingletonWorkflowRepository__:
         _registry: Dict[str, WorkflowComponent]
 
         def __init__(self):
@@ -20,49 +20,47 @@ class ToolsRepository(Iterable):
             :return:
             """
             if not isinstance(tool, WorkflowComponent):
-                raise TypeError(f'Tool should be type of Tool and not {type(tool)}')
-            if 'id' not in tool:
-                raise MissingIdError('Missing tool\'s id')
-            if 'inputs' in tool and 'id':
-                for input in tool['inputs']:
-                    if 'id' not in input:
-                        raise MissingIdError(f'Missing id for input: {input}')
-            if 'outputs' in tool and 'id':
-                for output in tool['outputs']:
-                    if 'id' not in output:
-                        raise MissingIdError(f'Missing id for outputs: {output}')
+                raise TypeError(f'WorkflowComponent expected but type of {type(tool)} given')
+            if not isinstance(tool.id, str):
+                raise MissingIdError('Missing WorkflowComponent\'s id')
+            for input in tool.inputs:
+                if 'id' not in input:
+                    raise MissingIdError(f'Missing id for input: {input}')
+            for output in tool.outputs:
+                if 'id' not in output:
+                    raise MissingIdError(f'Missing id for outputs: {output}')
 
         def register_tool(self, tool: WorkflowComponent) -> None:
             self.validate(tool)
-            if tool['id'] in self._registry:
-                raise KeyError(f'Dublicate key error: {tool["id"]}')
-            self._registry[tool['id']] = deepcopy(tool)
+            if tool.id in self._registry:
+                raise KeyError(f'Dublicate key error: {tool.id}')
+            self._registry[tool.id] = deepcopy(tool)
 
         def register_tools(self, *args):
             for tool in args:
                 self.register_tool(tool)
 
-        def get_by_id(self, id: str) -> Optional[Dict]:
+        def get_by_id(self, id: str) -> Optional[WorkflowComponent]:
             return self._registry.get(id, None)
 
-        def __iter__(self) -> Iterator[Dict]:
+        def __iter__(self) -> Iterator[WorkflowComponent]:
             for tool in self._registry.values():
                 yield tool
 
         def delete(self):
             self._registry = {}
 
-    __repo__: __SingletonToolsRepository__ = None
+    __repo__: __SingletonWorkflowRepository__ = None
 
     def __init__(self):
-        if ToolsRepository.__repo__ is None:
-            ToolsRepository.__repo__ = ToolsRepository.__SingletonToolsRepository__()
+        if WorkflowRepository.__repo__ is None:
+            WorkflowRepository.__repo__ = WorkflowRepository.__SingletonWorkflowRepository__()
 
     def __getattr__(self, item):
-        return getattr(ToolsRepository.__repo__, item)
+        return getattr(WorkflowRepository.__repo__, item)
 
     def __iter__(self) -> Iterator[Dict]:
-        for tool in ToolsRepository.__repo__:
+        for tool in WorkflowRepository.__repo__:
             yield tool
 
     @classmethod

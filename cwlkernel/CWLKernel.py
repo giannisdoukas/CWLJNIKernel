@@ -10,6 +10,8 @@ from cwlkernel.CWLLogger import CWLLogger
 from .CWLExecuteConfigurator import CWLExecuteConfigurator
 from .CoreExecutor import CoreExecutor
 from .IOManager import IOFileManager
+from .cwlrepository.cwlrepository import WorkflowRepository
+from .cwlrepository.CWLComponent import WorkflowComponentFactory, WorkflowComponent
 
 logger = logging.Logger('CWLKernel')
 
@@ -25,12 +27,12 @@ class CWLKernel(Kernel):
     }
     banner = "Common Workflow Language"
 
-    _magic_commands = frozenset(['logs', 'data', 'display_data'])
+    _magic_commands = frozenset(['execute', 'logs', 'data', 'display_data'])
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         conf = CWLExecuteConfigurator()
-        self._yaml_input_data: List[str] = []
+        self._yaml_input_data: Optional[str] = None
         self._results_manager = IOFileManager(os.sep.join([conf.CWLKERNEL_BOOT_DIRECTORY, 'results']))
         runtime_file_manager = IOFileManager(os.sep.join([conf.CWLKERNEL_BOOT_DIRECTORY, 'runtime_data']))
         self._cwl_executor = CoreExecutor(runtime_file_manager)
@@ -38,6 +40,7 @@ class CWLKernel(Kernel):
         self._cwl_logger = CWLLogger(os.path.join(conf.CWLKERNEL_BOOT_DIRECTORY, 'logs'))
         self._set_process_ids()
         self._cwl_logger.save()
+        self._workflow_repository = WorkflowRepository()
 
     def _set_process_ids(self):
         self._cwl_logger.process_id = {
@@ -63,7 +66,7 @@ class CWLKernel(Kernel):
     def do_execute(self, code: str, silent=False, store_history: bool = True,
                    user_expressions=None, allow_stdin: bool = False) -> Dict:
         if self._is_magic_command(code):
-            self._execute_magic_command(code)
+            self._do_execute_magic_command(code)
             return {
                 'status': 'ok',
                 # The base class increments the execution count
@@ -81,12 +84,23 @@ class CWLKernel(Kernel):
                     'payload': [],
                     'user_expressions': {},
                 }
+            else:
+                status, exception = self._do_execute_yaml(dict_code, code)
+                return {
+                    'status': status,
+                    # The base class increments the execution count
+                    'execution_count': self.execution_count,
+                    'payload': [],
+                    'user_expressions': {},
+                }
 
+    def _do_execute_yaml(self, dict_code, code):
+        exception = None
         if not self._is_cwl(dict_code):
-            exception = self._accumulate_data(code)
+            exception = self._set_data(code)
         else:
-            exception = self._execute_workflow(code)
-            self._clear_data()
+            cwl_component = WorkflowComponentFactory().get_workflow_component(code)
+            self._workflow_repository.register_tool(cwl_component)
 
         status = 'ok' if exception is None else 'error'
         if exception is not None:
@@ -94,19 +108,17 @@ class CWLKernel(Kernel):
                 self.iopub_socket, 'stream',
                 {'name': 'stderr', 'text': f'{type(exception).__name__}: {exception}'}
             )
-        return {
-            'status': status,
-            # The base class increments the execution count
-            'execution_count': self.execution_count,
-            'payload': [],
-            'user_expressions': {},
-        }
+        return status, exception
 
-    def _execute_magic_command(self, command: str):
+    def _do_execute_magic_command(self, command: str):
         command = command.split()[1:]
         command_name = command[0]
         args = command[1:]
         getattr(self, f'_execute_magic_{command_name}')(args)
+
+    def _execute_magic_execute(self, cwl_id: str):
+        cwl_component: WorkflowComponent = self._workflow_repository.get_by_id(cwl_id[0])
+        self._execute_workflow(cwl_component.to_yaml())
 
     def _execute_magic_display_data(self, data_name):
         if len(data_name) != 1 or not isinstance(data_name[0], str):
@@ -190,20 +202,21 @@ class CWLKernel(Kernel):
             }
         )
 
-    def _accumulate_data(self, code: str) -> Optional[Exception]:
+    def _set_data(self, code: str) -> Optional[Exception]:
         cwl = self._cwl_executor.file_manager.get_files_uri().path
         try:
             self._cwl_executor.validate_input_files(yaml.load(code, Loader=yaml.Loader), cwl)
         except FileNotFoundError as e:
             return e
-        self._yaml_input_data.append(code)
+        self._yaml_input_data = code
         self.send_response(self.iopub_socket, 'stream', {'name': 'stdout', 'text': 'Add data in memory'})
 
     def _clear_data(self):
-        self._yaml_input_data = []
+        self._yaml_input_data = None
 
     def _execute_workflow(self, code) -> Optional[Exception]:
-        self._cwl_executor.set_data(self._yaml_input_data)
+        input_data = [self._yaml_input_data] if self._yaml_input_data is not None else []
+        self._cwl_executor.set_data(input_data)
         self._cwl_executor.set_workflow(code)
         logger.debug('starting executing workflow ...')
         run_id, results, exception = self._cwl_executor.execute()
@@ -257,7 +270,6 @@ class CWLKernel(Kernel):
         :return: The process id and his parents id
         """
         return self._pid
-
 
 if __name__ == '__main__':
     from ipykernel.kernelapp import IPKernelApp
