@@ -5,14 +5,15 @@ from pathlib import Path
 from ruamel import yaml
 import ruamel
 
-from cwlkernel.CWLBuilder import CWLBuilder
+from cwlkernel.CWLBuilder import CWLSnippetBuilder
 
 
 class Test_CWLBuilder(unittest.TestCase):
     maxDiff = None
 
-    def test_build(self):
-        cwl_builder = CWLBuilder()
+    def test_snippet_builder(self):
+        temp_file = Path(tempfile.mktemp())
+        cwl_builder = CWLSnippetBuilder(temp_file)
 
         cell = "\n".join([
             "#!/usr/bin/env cwl-runner",
@@ -62,11 +63,9 @@ inputs:
             cwl_builder.get_current_code()
         )
 
-        temp_file = Path(tempfile.mktemp())
-        cwl_builder.build(temp_file)
+        cwl_builder.build()
         with temp_file.open() as f:
             created_code = f.read()
-
 
         self.assertDictEqual(
             ruamel.yaml.round_trip_load(cwl_builder.get_current_code()),

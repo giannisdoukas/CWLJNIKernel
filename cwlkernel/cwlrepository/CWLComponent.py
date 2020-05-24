@@ -148,6 +148,8 @@ class CWLWorkflow(WorkflowComponent):
 class WorkflowComponentFactory():
     def get_workflow_component(self, yaml_string: str) -> WorkflowComponent:
         component = yaml.load(StringIO(yaml_string), yaml.SafeLoader)
+        if 'id' not in component:
+            raise ValueError("cwl must contains an id")
         if component['class'] == 'CommandLineTool':
             return CWLTool(component['id'], component)
         elif component['class'] == 'Workflow':

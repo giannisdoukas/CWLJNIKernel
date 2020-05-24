@@ -65,42 +65,63 @@ class CWLKernel(Kernel):
 
     def do_execute(self, code: str, silent=False, store_history: bool = True,
                    user_expressions=None, allow_stdin: bool = False) -> Dict:
-        if self._is_magic_command(code):
-            self._do_execute_magic_command(code)
-            return {
-                'status': 'ok',
-                # The base class increments the execution count
-                'execution_count': self.execution_count,
-                'payload': [],
-                'user_expressions': {},
-            }
-        else:
-            dict_code = self._code_is_valid_yaml(code)
-            if dict_code is None:
+        try:
+            if self._is_magic_command(code):
+                self._do_execute_magic_command(code)
                 return {
-                    'status': 'error',
+                    'status': 'ok',
                     # The base class increments the execution count
                     'execution_count': self.execution_count,
                     'payload': [],
                     'user_expressions': {},
                 }
             else:
-                status, exception = self._do_execute_yaml(dict_code, code)
-                return {
-                    'status': status,
-                    # The base class increments the execution count
-                    'execution_count': self.execution_count,
-                    'payload': [],
-                    'user_expressions': {},
-                }
+                dict_code = self._code_is_valid_yaml(code)
+                if dict_code is None:
+                    return {
+                        'status': 'error',
+                        # The base class increments the execution count
+                        'execution_count': self.execution_count,
+                        'payload': [],
+                        'user_expressions': {},
+                    }
+                else:
+                    status, exception = self._do_execute_yaml(dict_code, code)
+                    return {
+                        'status': status,
+                        # The base class increments the execution count
+                        'execution_count': self.execution_count,
+                        'payload': [],
+                        'user_expressions': {},
+                    }
+        except Exception as e:
+            self.send_response(
+                self.iopub_socket, 'stream',
+                {'name': 'stderr', 'text': f'{type(e).__name__}: {e}'}
+            )
+            return {
+                'status': 'error',
+                # The base class increments the execution count
+                'execution_count': self.execution_count,
+                'payload': [],
+                'user_expressions': {},
+            }
 
     def _do_execute_yaml(self, dict_code, code):
         exception = None
         if not self._is_cwl(dict_code):
-            exception = self._set_data(code)
+            raise NotImplementedError()
+            # exception = self._set_data(code)
         else:
-            cwl_component = WorkflowComponentFactory().get_workflow_component(code)
-            self._workflow_repository.register_tool(cwl_component)
+            try:
+                cwl_component = WorkflowComponentFactory().get_workflow_component(code)
+                self._workflow_repository.register_tool(cwl_component)
+                self.send_response(
+                    self.iopub_socket, 'stream',
+                    {'name': 'stdout', 'text': f"tool '{cwl_component.id}' registered"}
+                )
+            except Exception as e:
+                exception = e
 
         status = 'ok' if exception is None else 'error'
         if exception is not None:
@@ -111,23 +132,27 @@ class CWLKernel(Kernel):
         return status, exception
 
     def _do_execute_magic_command(self, command: str):
-        command = command.split()[1:]
+        command = command.split(" ")[1:]
         command_name = command[0]
-        args = command[1:]
+        args = " ".join(command[1:])
         getattr(self, f'_execute_magic_{command_name}')(args)
 
-    def _execute_magic_execute(self, cwl_id: str):
-        cwl_component: WorkflowComponent = self._workflow_repository.get_by_id(cwl_id[0])
+    def _execute_magic_execute(self, execute_argument_string: str):
+        execute_argument_string = execute_argument_string.splitlines()
+        cwl_id = execute_argument_string[0]
+        cwl_component: WorkflowComponent = self._workflow_repository.get_by_id(cwl_id)
+        self._set_data('\n'.join(execute_argument_string[1:]))
         self._execute_workflow(cwl_component.to_yaml())
+        self._clear_data()
 
-    def _execute_magic_display_data(self, data_name):
-        if len(data_name) != 1 or not isinstance(data_name[0], str):
+    def _execute_magic_display_data(self, data_name: str):
+        if not isinstance(data_name, str) or len(data_name.split()) == 0:
             self._send_error_response(
                 'ERROR: you must select an output to display. Correct format:\n % display_data [output name]'
             )
             return
         results = list(
-            filter(lambda item: item[1]['id'] == data_name[0], self._results_manager.get_files_registry().items()))
+            filter(lambda item: item[1]['id'] == data_name, self._results_manager.get_files_registry().items()))
         if len(results) != 1:
             self.send_response(self.iopub_socket, 'stream', {'name': 'stderr', 'text': 'Result not found'})
             return
@@ -203,13 +228,11 @@ class CWLKernel(Kernel):
         )
 
     def _set_data(self, code: str) -> Optional[Exception]:
-        cwl = self._cwl_executor.file_manager.get_files_uri().path
-        try:
+        if len(code.split()) > 0:
+            cwl = self._cwl_executor.file_manager.get_files_uri().path
             self._cwl_executor.validate_input_files(yaml.load(code, Loader=yaml.Loader), cwl)
-        except FileNotFoundError as e:
-            return e
-        self._yaml_input_data = code
-        self.send_response(self.iopub_socket, 'stream', {'name': 'stdout', 'text': 'Add data in memory'})
+            self._yaml_input_data = code
+            self.send_response(self.iopub_socket, 'stream', {'name': 'stdout', 'text': 'Add data in memory'})
 
     def _clear_data(self):
         self._yaml_input_data = None

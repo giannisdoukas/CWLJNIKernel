@@ -56,18 +56,14 @@ class TestCWLKernel(unittest.TestCase):
             return data.format(tar_directory=tar_directory), temp_hello_world_file
 
         data, temp_hello_world_file = get_data()
-        result = kernel.do_execute(data, False)
-        self.assertEqual('ok', result['status'], f'execution returned an error')
 
         with open(os.sep.join([self.cwl_directory, 'extract_tar.cwl'])) as f:
             workflow_str = f.read().format(example_out=temp_hello_world_file.name[1:])
         result = kernel.do_execute(workflow_str, False)
         self.assertEqual('ok', result['status'], f'execution returned an error')
 
-        self.assertDictEqual(
-            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
-            kernel.do_execute('% execute extract-tar')
-        )
+        result = kernel.do_execute(f"% execute extract-tar\n{data}", False)
+        self.assertEqual('ok', result['status'], f'execution returned an error')
 
         full_path, basename = [(f, os.path.basename(f)) for f in kernel.get_past_results()][0]
 
@@ -98,30 +94,6 @@ class TestCWLKernel(unittest.TestCase):
         self.assertTrue(full_path.startswith(kernel._results_manager.ROOT_DIRECTORY), 'output is in a wrong directory')
         self.assertTrue(basename, 'touchedfile.txt')
 
-    def test_get_input_data(self):
-        from cwlkernel.CWLKernel import CWLKernel
-        kernel = CWLKernel()
-        # cancel send_response
-        kernel.send_response = lambda *args, **kwargs: None
-
-        with open(os.sep.join([self.data_directory, 'data1.yml'])) as f:
-            data = f.read()
-        exec_response = kernel.do_execute(data)
-
-        self.assertDictEqual(
-            {"status": "ok", "execution_count": 0, 'payload': [], 'user_expressions': {}},
-            exec_response
-        )
-        self.assertEqual(data, kernel._yaml_input_data)
-
-        exec_response = kernel.do_execute(data)
-        # The base class increments the execution count. So, exec_count remains 0
-        self.assertDictEqual(
-            {"status": "ok", "execution_count": 0, 'payload': [], 'user_expressions': {}},
-            exec_response
-        )
-        self.assertEqual(data, kernel._yaml_input_data)
-
     def test_execute_echo_cwl(self):
         kernel = self.get_kernel()
         yaml = YAML(typ='safe')
@@ -135,10 +107,11 @@ class TestCWLKernel(unittest.TestCase):
         self.assertIsNotNone(kernel._workflow_repository.get_by_id(yaml.load(workflow_str)['id']))
 
         with open(os.sep.join([self.data_directory, 'echo-job.yml'])) as f:
-            data = f.read()
+            data = '\n'.join(["% execute echo", f.read()])
+
         self.assertDictEqual(
             {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
-            kernel.do_execute(data, False)
+            kernel.do_execute(data)
         )
 
     def test_display_data_magic_command(self):
@@ -156,15 +129,10 @@ class TestCWLKernel(unittest.TestCase):
         )
 
         with open(os.sep.join([self.data_directory, 'echo-job.yml'])) as f:
-            data = f.read()
+            data = f"% execute echo\n{f.read()}"
         self.assertDictEqual(
             {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
             kernel.do_execute(data, False)
-        )
-
-        self.assertDictEqual(
-            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
-            kernel.do_execute('% execute echo')
         )
 
         kernel.do_execute('% display_data')
@@ -227,10 +195,7 @@ class TestCWLKernel(unittest.TestCase):
 
     def test_handle_input_data_files(self):
         import yaml
-        from cwlkernel.CWLKernel import CWLKernel
-        kernel = CWLKernel()
-        # cancel send_response
-        kernel.send_response = lambda *args, **kwargs: None
+        kernel = self.get_kernel()
 
         with open(os.sep.join([self.data_directory, 'input_with_file.yml'])) as f:
             data = yaml.load(f, Loader=yaml.Loader)
@@ -249,23 +214,55 @@ class TestCWLKernel(unittest.TestCase):
             kernel.do_execute(workflow_str, False)
         )
 
-        self.assertDictEqual(
-            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
-            kernel.do_execute(data_stream.getvalue(), False)
-        )
+        # self.assertDictEqual(
+        #     {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+        #     kernel.do_execute(data_stream.getvalue(), False)
+        # )
 
         self.assertDictEqual(
             {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
-            kernel.do_execute('% execute workflow-with-input-file')
+            kernel.do_execute(f'% execute workflow-with-input-file\n{data_stream.getvalue()}')
         )
 
         import uuid
         input_with_missing_file = StringIO()
         yaml.dump({"missing_file": {"class": "File", "location": f"/{uuid.uuid4()}"}}, input_with_missing_file)
-        response = kernel.do_execute(input_with_missing_file.getvalue())
+        response = kernel.do_execute(f'% execute workflow-with-input-file\n{input_with_missing_file.getvalue()}')
         self.assertDictEqual(
             {'status': 'error', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
             response
+        )
+
+    def test_send_workflow_without_id(self):
+        from cwlkernel.CWLKernel import CWLKernel
+        kernel = CWLKernel()
+        # cancel send_response
+        responses = []
+        kernel.send_response = lambda *args, **kwargs: responses.append((args, kwargs))
+
+        with open(os.sep.join([self.cwl_directory, 'without_id.cwl'])) as f:
+            workflow_str = f.read()
+        self.assertDictEqual(
+            {'status': 'error', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(workflow_str)
+        )
+        self.assertTupleEqual(
+            ((None, 'stream', {'name': 'stderr', 'text': "ValueError: cwl must contains an id"}),
+             {}),
+            responses[-1]
+        )
+
+        with open(os.sep.join([self.cwl_directory, 'echo.cwl'])) as f:
+            workflow_str = f.read()
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(workflow_str)
+        )
+
+        self.assertTupleEqual(
+            ((None, 'stream', {'name': 'stdout', 'text': "tool 'echo' registered"}),
+             {}),
+            responses[-1]
         )
 
     def test_all_magic_commands_have_methods(self):
@@ -293,7 +290,7 @@ class TestCWLKernel(unittest.TestCase):
         print('create tar file:', tar_full_name)
         with tarfile.open(tar_full_name, 'w') as tar:
             tar.add(temp_hello_world_file.name)
-        data = data.format(tar_directory=tar_directory)
+        data = f"% execute extract-tar\n{data.format(tar_directory=tar_directory)}"
 
         # set workflow
         with open(os.sep.join([self.cwl_directory, 'extract_tar.cwl'])) as f:
@@ -305,10 +302,10 @@ class TestCWLKernel(unittest.TestCase):
         result = kernel.do_execute(data, False)
         self.assertEqual('ok', result['status'], f'execution returned an error')
 
-        self.assertDictEqual(
-            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
-            kernel.do_execute('% execute extract-tar')
-        )
+        # self.assertDictEqual(
+        #     {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+        #     kernel.do_execute('% execute extract-tar')
+        # )
 
         self.assertTupleEqual(
             (None, 'display_data',
@@ -333,7 +330,7 @@ class TestCWLKernel(unittest.TestCase):
                  }
              }
              ),
-            responses[1][0]
+            responses[-1][0]
         )
 
     def test_array_output(self):
@@ -341,10 +338,10 @@ class TestCWLKernel(unittest.TestCase):
         kernel = CWLKernel()
         # cancel send_response
         kernel.send_response = lambda *args, **kwargs: None
-        with open(os.sep.join([self.data_directory, 'array-outputs-job.yml'])) as f:
-            data = f.read()
         with open(os.sep.join([self.cwl_directory, 'array-outputs.cwl'])) as f:
             workflow_str = f.read()
+        with open(os.sep.join([self.data_directory, 'array-outputs-job.yml'])) as f:
+            data = f"% execute touch\n{f.read()}"
         self.assertDictEqual(
             {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
             kernel.do_execute(workflow_str)
