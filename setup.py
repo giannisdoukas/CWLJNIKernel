@@ -6,7 +6,7 @@ name = 'cwlkernel'
 setup(
     name=name,
     version='0.1',
-    py_modules=['cwlkernel'],
+    packages=['cwlkernel', 'cwlkernel.cwlrepository'],
     url='https://github.com/giannisdoukas/CWLJNIKernel',
     author='Yannis Doukas',
     author_email='',

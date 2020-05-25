@@ -144,3 +144,4 @@ tmp*.json
 !examples/*.ipynb
 
 workflow-examples/*
+/.python-version
