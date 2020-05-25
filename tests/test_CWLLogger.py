@@ -42,7 +42,8 @@ class TestCWLLogger(unittest.TestCase):
 
     def test_get_running_kernels(self):
         import subprocess
-        kernel = subprocess.Popen(["python", "-m", "cwlkernel"])
+        import sys
+        kernel = subprocess.Popen([f"{sys.executable}", "-m", "cwlkernel"])
         pids = []
         try:
             pids = CWLLogger.get_running_kernels()

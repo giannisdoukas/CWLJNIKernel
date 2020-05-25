@@ -215,11 +215,6 @@ class TestCWLKernel(unittest.TestCase):
             kernel.do_execute(workflow_str, False)
         )
 
-        # self.assertDictEqual(
-        #     {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
-        #     kernel.do_execute(data_stream.getvalue(), False)
-        # )
-
         self.assertDictEqual(
             {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
             kernel.do_execute(f'% execute workflow-with-input-file\n{data_stream.getvalue()}')
