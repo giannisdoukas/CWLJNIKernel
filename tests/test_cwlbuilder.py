@@ -2,8 +2,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from ruamel import yaml
-import ruamel
+import yaml
+from io import StringIO
 
 from cwlkernel.CWLBuilder import CWLSnippetBuilder
 
@@ -12,12 +12,12 @@ class Test_CWLBuilder(unittest.TestCase):
     maxDiff = None
 
     def test_snippet_builder(self):
-        temp_file = Path(tempfile.mktemp())
-        cwl_builder = CWLSnippetBuilder(temp_file)
+        cwl_builder = CWLSnippetBuilder()
 
         cell = "\n".join([
             "#!/usr/bin/env cwl-runner",
             "cwlVersion: v1.0",
+            "id: test",
             "class: CommandLineTool",
             "baseCommand: echo"
         ])
@@ -25,6 +25,7 @@ class Test_CWLBuilder(unittest.TestCase):
         self.assertEqual(
             """#!/usr/bin/env cwl-runner
 cwlVersion: v1.0
+id: test
 class: CommandLineTool
 baseCommand: echo""",
             cwl_builder.get_current_code()
@@ -36,6 +37,7 @@ baseCommand: echo""",
         self.assertEqual(
             """#!/usr/bin/env cwl-runner
 cwlVersion: v1.0
+id: test
 class: CommandLineTool
 baseCommand: echo
 stdout: output.txt
@@ -44,30 +46,47 @@ inputs:""",
         )
 
         cwl_builder.append("""
-message:
+- id: message
   type: string
   inputBinding:
   position: 1""", indent=2)
         self.assertEqual(
             """#!/usr/bin/env cwl-runner
 cwlVersion: v1.0
+id: test
 class: CommandLineTool
 baseCommand: echo
 stdout: output.txt
 inputs:
   
-  message:
+  - id: message
     type: string
     inputBinding:
     position: 1""",
             cwl_builder.get_current_code()
         )
 
-        cwl_builder.build()
-        with temp_file.open() as f:
-            created_code = f.read()
+        cwl_builder.append("""outputs: []""")
+        self.assertEqual(
+            """#!/usr/bin/env cwl-runner
+cwlVersion: v1.0
+id: test
+class: CommandLineTool
+baseCommand: echo
+stdout: output.txt
+inputs:
+  
+  - id: message
+    type: string
+    inputBinding:
+    position: 1
+outputs: []""",
+            cwl_builder.get_current_code()
+        )
+
+        cwl_workflow = cwl_builder.build()
 
         self.assertDictEqual(
-            ruamel.yaml.round_trip_load(cwl_builder.get_current_code()),
-            ruamel.yaml.round_trip_load(created_code)
+            yaml.load(StringIO(cwl_builder.get_current_code()), yaml.Loader),
+            yaml.load(StringIO(cwl_workflow.to_yaml()), yaml.Loader)
         )

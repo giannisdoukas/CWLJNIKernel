@@ -1,8 +1,8 @@
-from pathlib import Path
 from abc import ABC, abstractmethod
-from ruamel.yaml import ruamel
+import yaml
 from cwlkernel.cwlrepository.CWLComponent import WorkflowComponent, CWLTool, CWLWorkflow
-import os
+from io import StringIO
+
 
 class CWLBuilder(ABC):
     @abstractmethod
@@ -12,11 +12,9 @@ class CWLBuilder(ABC):
 
 class CWLSnippetBuilder(CWLBuilder):
     _code: str
-    _location: Path
 
-    def __init__(self, location: Path):
+    def __init__(self):
         self._code = ""
-        self._location = location
 
     def append(self, code: str, indent: int = 0) -> None:
         code = '\n'. \
@@ -31,10 +29,10 @@ class CWLSnippetBuilder(CWLBuilder):
         return self._code
 
     def build(self) -> WorkflowComponent:
-        code = ruamel.yaml.round_trip_load(self._code)
-        with self._location.open('w') as f:
-            ruamel.yaml.round_trip_dump(code, f)
+        code = yaml.load(StringIO(self._code), yaml.Loader)
+        if 'id' not in code:
+            raise ValueError("the workflow must contain an id")
         if code['class'] == 'CommandLineTool':
-            return CWLTool(code.get('id', os.path.basename(self._location)), code)
+            return CWLTool(code.get('id'), code)
         elif code['class'] == 'Workflow':
-            return CWLWorkflow(code.get('id', os.path.basename(self._location)), code)
+            return CWLWorkflow(code.get('id'), code)
