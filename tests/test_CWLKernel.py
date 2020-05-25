@@ -351,5 +351,5 @@ class TestCWLKernel(unittest.TestCase):
             kernel.do_execute(data)
         )
 
-    if __name__ == '__main__':
-        unittest.main()
+if __name__ == '__main__':
+    unittest.main()
