@@ -47,8 +47,8 @@ class TestCWLLogger(unittest.TestCase):
         pids = []
         try:
             pids = CWLLogger.get_running_kernels()
-        except Exception:
-            pass
+        except Exception as e:
+            print(f'ERROR:::: {e}')
         finally:
             kernel.kill()
         self.assertIn(kernel.pid, pids)
