@@ -1,13 +1,12 @@
+import tarfile
+
 import logging
 import os
-import tarfile
 import tempfile
 import unittest
-import urllib
 from io import StringIO
-from cwlkernel.CWLKernel import CWLKernel
-from urllib.parse import urlparse
 from ruamel.yaml import YAML
+from urllib.parse import urlparse
 
 from cwlkernel.CWLKernel import CWLKernel
 from cwlkernel.cwlrepository.cwlrepository import WorkflowRepository
@@ -298,11 +297,6 @@ class TestCWLKernel(unittest.TestCase):
         result = kernel.do_execute(data, False)
         self.assertEqual('ok', result['status'], f'execution returned an error')
 
-        # self.assertDictEqual(
-        #     {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
-        #     kernel.do_execute('% execute extract-tar')
-        # )
-
         self.assertTupleEqual(
             (None, 'display_data',
              {
@@ -387,6 +381,41 @@ number_of_lines: 5
         self.assertDictEqual(
             {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
             kernel.do_execute(execute_head)
+        )
+
+    def test_snippet_builder(self):
+        import yaml
+        from cwlkernel.CWLKernel import CWLKernel
+        kernel = CWLKernel()
+        # cancel send_response
+        responses = []
+        kernel.send_response = lambda *args, **kwargs: responses.append((args, kwargs))
+
+        with open(os.sep.join([self.cwl_directory, 'echo.cwl'])) as f:
+            echo_workflow = f.read().splitlines()
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(f"% snippet add\n{os.linesep.join(echo_workflow[:6])}")
+        )
+
+        self.assertDictEqual(
+            yaml.load(StringIO(os.linesep.join(echo_workflow[:6])), yaml.Loader),
+            dict(responses[-1][0][2]['data']['application/json'])
+        )
+
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(f"% snippet build\n{os.linesep.join(echo_workflow[6:])}")
+        )
+
+        self.assertDictEqual(
+            yaml.load(StringIO(os.linesep.join(echo_workflow)), yaml.Loader),
+            dict(responses[-1][0][2]['data']['application/json'])
+        )
+
+        self.assertDictEqual(
+            yaml.load(StringIO(kernel._workflow_repository.__repo__.get_by_id("echo").to_yaml()), yaml.Loader),
+            yaml.load(StringIO('\n'.join(echo_workflow)), yaml.Loader),
         )
 
 

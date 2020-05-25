@@ -1,3 +1,5 @@
+from io import StringIO
+
 import logging
 import os
 from typing import List, Dict, Optional, Tuple, Union
@@ -6,6 +8,7 @@ from ipykernel.kernelbase import Kernel
 from ruamel import yaml
 from ruamel.yaml import YAML
 
+from cwlkernel.CWLBuilder import CWLSnippetBuilder
 from cwlkernel.CWLLogger import CWLLogger
 from .CWLExecuteConfigurator import CWLExecuteConfigurator
 from .CoreExecutor import CoreExecutor
@@ -27,7 +30,7 @@ class CWLKernel(Kernel):
     }
     banner = "Common Workflow Language"
 
-    _magic_commands = frozenset(['execute', 'logs', 'data', 'display_data'])
+    _magic_commands = frozenset(['execute', 'logs', 'data', 'display_data', 'snippet'])
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -41,6 +44,7 @@ class CWLKernel(Kernel):
         self._set_process_ids()
         self._cwl_logger.save()
         self._workflow_repository = WorkflowRepository()
+        self._snippet_builder = CWLSnippetBuilder()
 
     def _set_process_ids(self):
         self._cwl_logger.process_id = {
@@ -111,7 +115,6 @@ class CWLKernel(Kernel):
         exception = None
         if not self._is_cwl(dict_code):
             raise NotImplementedError()
-            # exception = self._set_data(code)
         else:
             try:
                 cwl_component = WorkflowComponentFactory().get_workflow_component(code)
@@ -136,6 +139,25 @@ class CWLKernel(Kernel):
         command_name = command[0].strip()
         args = " ".join(command[1:])
         getattr(self, f'_execute_magic_{command_name}')(args)
+
+    def _execute_magic_snippet(self, command: str):
+        command = command.splitlines()
+        command[0] = command[0].strip()
+        y = YAML(typ='rt')
+        if command[0] == "add":
+            snippet = '\n'.join(command[1:])
+            self._snippet_builder.append(snippet)
+            current_code = y.load(StringIO(self._snippet_builder.get_current_code()))
+        elif command[0] == "build":
+            snippet = '\n'.join(command[1:])
+            self._snippet_builder.append(snippet)
+            workflow = self._snippet_builder.build()
+            self._workflow_repository.register_tool(workflow)
+            current_code = y.load(StringIO(self._snippet_builder.get_current_code()))
+            self._snippet_builder.clear()
+        else:
+            raise ValueError()
+        self._send_json_response(current_code)
 
     def _execute_magic_execute(self, execute_argument_string: str):
         execute_argument_string = execute_argument_string.splitlines()

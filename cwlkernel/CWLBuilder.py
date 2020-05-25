@@ -36,3 +36,6 @@ class CWLSnippetBuilder(CWLBuilder):
             return CWLTool(code.get('id'), code)
         elif code['class'] == 'Workflow':
             return CWLWorkflow(code.get('id'), code)
+
+    def clear(self):
+        self._code = ""
