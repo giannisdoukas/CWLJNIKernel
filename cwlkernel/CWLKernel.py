@@ -133,13 +133,13 @@ class CWLKernel(Kernel):
 
     def _do_execute_magic_command(self, command: str):
         command = command.split(" ")[1:]
-        command_name = command[0]
+        command_name = command[0].strip()
         args = " ".join(command[1:])
         getattr(self, f'_execute_magic_{command_name}')(args)
 
     def _execute_magic_execute(self, execute_argument_string: str):
         execute_argument_string = execute_argument_string.splitlines()
-        cwl_id = execute_argument_string[0]
+        cwl_id = execute_argument_string[0].strip()
         cwl_component: WorkflowComponent = self._workflow_repository.get_by_id(cwl_id)
         self._set_data('\n'.join(execute_argument_string[1:]))
         self._execute_workflow(cwl_component.to_yaml())

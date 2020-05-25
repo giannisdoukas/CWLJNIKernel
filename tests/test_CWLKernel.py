@@ -3,9 +3,10 @@ import os
 import tarfile
 import tempfile
 import unittest
+import urllib
 from io import StringIO
 from cwlkernel.CWLKernel import CWLKernel
-
+from urllib.parse import urlparse
 from ruamel.yaml import YAML
 
 from cwlkernel.CWLKernel import CWLKernel
@@ -350,6 +351,49 @@ class TestCWLKernel(unittest.TestCase):
             {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
             kernel.do_execute(data)
         )
+
+    def test_execute_multiple_steps(self):
+        from cwlkernel.CWLKernel import CWLKernel
+        kernel = CWLKernel()
+        # cancel send_response
+        responses = []
+        kernel.send_response = lambda *args, **kwargs: responses.append((args, kwargs))
+
+        with open(os.sep.join([self.cwl_directory, 'head.cwl'])) as f:
+            head_cwl = f.read()
+        with open(os.sep.join([self.cwl_directory, 'tail.cwl'])) as f:
+            tail = f.read()
+
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(head_cwl)
+        )
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(tail)
+        )
+
+        execute_tail = f"""% execute tail 
+tailinput:
+    class: File
+    location: {os.sep.join([self.data_directory, 'data.csv'])}
+number_of_lines: 15"""
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(execute_tail)
+        )
+
+        execute_head = f"""% execute head
+headinput:
+    class: File
+    location: {urlparse(responses[-1][0][2]['data']['application/json']['tailoutput']['location']).path}
+number_of_lines: 5        
+"""
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(execute_head)
+        )
+
 
 if __name__ == '__main__':
     unittest.main()
