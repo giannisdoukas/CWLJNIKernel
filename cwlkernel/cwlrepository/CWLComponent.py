@@ -21,7 +21,11 @@ class WorkflowComponent(ABC):
         return self._id
 
     @abstractmethod
-    def to_yaml(self) -> str:
+    def to_yaml(self, nested=False) -> str:
+        pass
+
+    @abstractmethod
+    def to_dict(self) -> Dict:
         pass
 
     @property
@@ -57,11 +61,14 @@ class CWLTool(WorkflowComponent):
     def command_line_tool(self, command_line_tool: Dict):
         self._command_line_tool = command_line_tool
 
-    def to_yaml(self) -> str:
+    def to_yaml(self, nested=False) -> str:
         yaml_text = StringIO()
         yaml.dump(self.command_line_tool, yaml_text)
 
         return yaml_text.getvalue()
+
+    def to_dict(self) -> Dict:
+        return deepcopy(self.command_line_tool)
 
     @property
     def inputs(self) -> List[Dict]:
@@ -70,6 +77,11 @@ class CWLTool(WorkflowComponent):
     @property
     def outputs(self) -> List[Dict]:
         return deepcopy(self._command_line_tool['outputs'])
+
+    def _packed_steps(self) -> Dict:
+        to_return = self.to_dict()
+        to_return.pop('cwlVersion')
+        return to_return
 
 
 class CWLWorkflow(WorkflowComponent):
@@ -95,6 +107,15 @@ class CWLWorkflow(WorkflowComponent):
             steps[step]['run'] = steps[step]['run']._id
         return deepcopy(steps)
 
+    def _packed_steps(self):
+        steps = {}
+        for step in self._steps:
+            s = deepcopy(self._steps[step])
+            if isinstance(s['run'], WorkflowComponent):
+                s['run'] = s['run']._packed_steps()
+            steps[step] = s
+        return deepcopy(steps)
+
     """
     A composite object can add or remove other components (both simple or
     complex) to or from its child list.
@@ -108,17 +129,35 @@ class CWLWorkflow(WorkflowComponent):
         }
 
     def remove(self, component: WorkflowComponent) -> None:
-        # self._children.remove(component)
         raise NotImplementedError()
 
     def add_input(self, workflow_input: Dict, step_id: str, in_step_id: str):
         self._inputs.append(workflow_input)
         self._steps[step_id]['in'][in_step_id] = workflow_input['id']
 
-    def to_yaml(self) -> str:
-        # self.validate()
+    def to_yaml(self, nested=False) -> str:
         yaml_text = StringIO()
-        yaml.dump({
+        if nested is True:
+            result = self._to_packed_dict()
+        else:
+            result = self.to_dict()
+        yaml.dump(result, yaml_text)
+        yaml_str = yaml_text.getvalue()
+        return yaml_str
+
+    def _to_packed_dict(self) -> Dict:
+        return {
+            'cwlVersion': 'v1.0',
+            'class': 'Workflow',
+            'id': self.id,
+            'inputs': self._inputs,
+            'outputs': self._outputs,
+            'steps': self._packed_steps(),
+            'requirements': self._requirements
+        }
+
+    def to_dict(self) -> Dict:
+        return {
             'cwlVersion': 'v1.0',
             'class': 'Workflow',
             'id': self.id,
@@ -126,9 +165,7 @@ class CWLWorkflow(WorkflowComponent):
             'outputs': self._outputs,
             'steps': self.steps,
             'requirements': self._requirements
-        }, yaml_text)
-        yaml_str = yaml_text.getvalue()
-        return yaml_str
+        }
 
     def validate(self):
         raise NotImplementedError()
@@ -160,149 +197,3 @@ class WorkflowComponentFactory():
 
 if __name__ == '__main__':
     pass
-    # simple: WorkflowComponent = CWLTool({
-    #     "class": "CommandLineTool",
-    #     "label": "Example trivial wrapper for Java 9 compiler",
-    #     "hints": [
-    #         {
-    #             "dockerPull": "openjdk:9.0.1-11-slim",
-    #             "class": "DockerRequirement"
-    #         }
-    #     ],
-    #     "baseCommand": "javac",
-    #     "arguments": [
-    #         "-d",
-    #         "$(runtime.outdir)"
-    #     ],
-    #     "id": "#arguments.cwl"
-    # },
-    #     inputs={"inputs": [
-    #         {
-    #             "type": "File",
-    #             "inputBinding": {
-    #                 "position": 1
-    #             },
-    #             "id": "#arguments.cwl/src"
-    #         }
-    #     ]},
-    #     outputs={"outputs": [
-    #         {
-    #             "type": "File",
-    #             "outputBinding": {
-    #                 "glob": "*.class"
-    #             },
-    #             "id": "#arguments.cwl/classfile"
-    #         }
-    #     ]})
-    # x = lambda y: json.dumps(y, indent=2)
-    # print(x(simple.to_yaml()))
-    #
-    # print("----------------------------------------")
-    # composed: WorkflowComponent = CWLWorkflow(
-    #     id="main",
-    #     inputs={
-    #         "inputs": [
-    #             {
-    #                 "type": "string",
-    #                 # "id": "#main/name_of_file_to_extract"
-    #                 "id": "name_of_file_to_extract"
-    #             },
-    #             {
-    #                 "type": "File",
-    #                 # "id": "#main/tarball"
-    #                 "id": "tarball"
-    #             }
-    #         ],
-    #     },
-    #     outputs={
-    #         "outputs": [
-    #             {
-    #                 "type": "File",
-    #                 # "outputSource": "#main/compile/classfile",
-    #                 "id": "#main/compiled_class"
-    #             }
-    #         ]},
-    # )
-    # print(x(composed.to_yaml()))
-    # print("----------------------------------------")
-    #
-    # print("----------------------------------------")
-    # composed.add(simple, "")
-    # print(x(composed.to_yaml()))
-    # print("----------------------------------------")
-    #
-    # print("----------------------------------------")
-    # simple2: WorkflowComponent = CWLTool({
-    #     "class": "CommandLineTool",
-    #     "baseCommand": [
-    #         "tar",
-    #         "--extract"
-    #     ],
-    #     "inputs": [
-    #         {
-    #             "type": "string",
-    #             "inputBinding": {
-    #                 "position": 1
-    #             },
-    #             "id": "#tar-param.cwl/extractfile"
-    #         },
-    #         {
-    #             "type": "File",
-    #             "inputBinding": {
-    #                 "prefix": "--file"
-    #             },
-    #             "id": "#tar-param.cwl/tarfile"
-    #         }
-    #     ],
-    #     "outputs": [
-    #         {
-    #             "type": "File",
-    #             "outputBinding": {
-    #                 "glob": "$(inputs.extractfile)"
-    #             },
-    #             "id": "#tar-param.cwl/extracted_file"
-    #         }
-    #     ],
-    #     "id": "#tar-param.cwl"
-    # })
-    # composed2: WorkflowComponent = CWLWorkflow()
-    # composed2.add(simple2)
-    # composed2.add(composed)
-    # print(x(composed2.to_yaml()))
-    # print("----------------------------------------")
-
-# show workflows
-# 1.
-# 2.
-# 3. ...
-
-
-# execute 2
-# ....
-
-
-# execute 5 with reference to 2 output
-# ....
-
-
-# to compose the cwl developer describes a story
-
-
-# class CWLComponent:
-#     _id: str
-#     _description: Dict
-#     _inputs = List[Port]
-#     _outputs = List[Port]
-#
-#     def link_with(self, other: Port) -> 'CWLComponent':
-#         raise NotImplementedError()
-#
-#     @classmethod
-#     def from_yaml(cls, yaml_str: str) -> 'CWLComponent':
-#         raise NotImplementedError()
-#
-#     def expose_port(self, port: Port) -> None:
-#         raise NotImplementedError()
-#
-#     def compile(self) -> 'CWLComponent':
-#         raise NotImplementedError()

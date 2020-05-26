@@ -3,7 +3,7 @@ from io import StringIO
 import logging
 import os
 from typing import List, Dict, Optional, Tuple, Union
-
+import re
 from ipykernel.kernelbase import Kernel
 from ruamel import yaml
 from ruamel.yaml import YAML
@@ -14,7 +14,7 @@ from .CWLExecuteConfigurator import CWLExecuteConfigurator
 from .CoreExecutor import CoreExecutor
 from .IOManager import IOFileManager
 from .cwlrepository.cwlrepository import WorkflowRepository
-from .cwlrepository.CWLComponent import WorkflowComponentFactory, WorkflowComponent
+from .cwlrepository.CWLComponent import WorkflowComponentFactory, WorkflowComponent, CWLWorkflow
 
 logger = logging.Logger('CWLKernel')
 
@@ -30,7 +30,8 @@ class CWLKernel(Kernel):
     }
     banner = "Common Workflow Language"
 
-    _magic_commands = frozenset(['execute', 'logs', 'data', 'display_data', 'snippet'])
+    _magic_commands = frozenset(['execute', 'logs', 'data', 'display_data', 'snippet', 'newWorkflow',
+                                 'newWorkflowAddStep', 'newWorkflowAddInput', 'newWorkflowBuild'])
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -45,6 +46,7 @@ class CWLKernel(Kernel):
         self._cwl_logger.save()
         self._workflow_repository = WorkflowRepository()
         self._snippet_builder = CWLSnippetBuilder()
+        self._workflow_composer: Optional[CWLWorkflow] = None
 
     def _set_process_ids(self):
         self._cwl_logger.process_id = {
@@ -99,6 +101,8 @@ class CWLKernel(Kernel):
                         'user_expressions': {},
                     }
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             self.send_response(
                 self.iopub_socket, 'stream',
                 {'name': 'stderr', 'text': f'{type(e).__name__}: {e}'}
@@ -134,11 +138,48 @@ class CWLKernel(Kernel):
             )
         return status, exception
 
-    def _do_execute_magic_command(self, command: str):
-        command = command.split(" ")[1:]
-        command_name = command[0].strip()
-        args = " ".join(command[1:])
-        getattr(self, f'_execute_magic_{command_name}')(args)
+    def _do_execute_magic_command(self, commands: str):
+        for command in re.compile(r'^%[ ]+', re.MULTILINE).split(commands):
+            command = command.strip()
+            if command == '':
+                continue
+            command = command.split(" ")
+            command_name = command[0].strip()
+            args = " ".join(command[1:])
+            getattr(self, f'_execute_magic_{command_name}')(args)
+
+    def _execute_magic_newWorkflowBuild(self, *args):
+        self._send_json_response(self._workflow_composer.to_dict())
+        self._workflow_repository.register_tool(self._workflow_composer)
+        self._workflow_composer = None
+
+    def _execute_magic_newWorkflowAddInput(self, args: str):
+        import yaml as y
+        args = args.splitlines()
+        step_id, step_in_id = args[0].split()
+        input_description = '\n'.join(args[1:])
+        input_description = y.load(StringIO(input_description), y.Loader)
+        self._workflow_composer.add_input(
+            workflow_input=input_description,
+            step_id=step_id.strip(),
+            in_step_id=step_in_id.strip())
+
+    def _execute_magic_newWorkflowAddStepIn(self, args: str):
+        args = args.splitlines()
+        step_id = args[0].strip()
+        input_description = '\n'.join(args[1:])
+        import yaml as y
+        input_description = y.load(StringIO(input_description), y.Loader)
+        for input_id, description in input_description.items():
+            self._workflow_composer.add_step_in(step_id, input_id, description)
+
+    def _execute_magic_newWorkflowAddStep(self, ids: str):
+        tool_id, step_id = ids.split()
+        tool = self._workflow_repository.get_by_id(tool_id)
+        self._workflow_composer.add(tool, step_id)
+
+    def _execute_magic_newWorkflow(self, id: str):
+        self._workflow_composer = CWLWorkflow(id)
 
     def _execute_magic_snippet(self, command: str):
         command = command.splitlines()

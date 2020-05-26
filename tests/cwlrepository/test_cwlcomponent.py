@@ -72,6 +72,7 @@ class CWLComponentTest(unittest.TestCase):
                                                         'outputs': [{'id': 'tailoutput', 'type': 'stdout'}],
                                                         'label': 'tail',
                                                         'stdout': 'tail.out'})
+        # TODO: add output
         final_workflow.add(head_tool, 'head')
         final_workflow.add_input({'id': 'inputfile', 'type': 'File'}, step_id='head', in_step_id='headinput')
         final_workflow.add(tail_tool, 'tail')
@@ -101,6 +102,230 @@ class CWLComponentTest(unittest.TestCase):
             },
             yaml.load(StringIO(final_workflow.to_yaml()), Loader=yaml.BaseLoader))
 
+    def test_two_connect_io_between_steps_nested_yaml(self):
+        final_workflow = CWLWorkflow(id='main')
+        head_tool: WorkflowComponent = CWLTool('head', {'class': 'CommandLineTool',
+                                                        'cwlVersion': 'v1.0',
+                                                        'id': 'head',
+                                                        'baseCommand': ['head'],
+                                                        'inputs': [{'id': 'number_of_lines',
+                                                                    'type': 'int?',
+                                                                    'inputBinding': {'position': 0, 'prefix': '-n'}},
+                                                                   {'id': 'headinput', 'type': 'File',
+                                                                    'inputBinding': {'position': 1}}],
+                                                        'outputs': [{'id': 'headoutput', 'type': 'stdout'}],
+                                                        'label': 'head',
+                                                        'stdout': 'head.out'})
+        tail_tool: WorkflowComponent = CWLTool('tail', {'class': 'CommandLineTool',
+                                                        'cwlVersion': 'v1.0',
+                                                        'id': 'tail',
+                                                        'baseCommand': ['tail'],
+                                                        'inputs': [{'id': 'number_of_lines',
+                                                                    'type': 'int?',
+                                                                    'inputBinding': {'position': 0, 'prefix': '-n'}},
+                                                                   {'id': 'tailinput', 'type': 'File',
+                                                                    'inputBinding': {'position': 1}}],
+                                                        'outputs': [{'id': 'tailoutput', 'type': 'stdout'}],
+                                                        'label': 'tail',
+                                                        'stdout': 'tail.out'})
+        # TODO: add output
+        final_workflow.add(head_tool, 'head')
+        final_workflow.add_input({'id': 'inputfile', 'type': 'File'}, step_id='head', in_step_id='headinput')
+        final_workflow.add(tail_tool, 'tail')
+        final_workflow.add_step_in(step='tail', name='tailinput', connect='head/headoutput')
+        self.assertDictEqual(
+            {
+                "cwlVersion": "v1.0",
+                "class": "Workflow",
+                "id": "main",
+                "inputs": [{'id': 'inputfile', 'type': 'File'}],
+                "outputs": [],
+                "steps": {
+                    "head":
+                        {
+                            "run": {'class': 'CommandLineTool',
+                                    'id': 'head',
+                                    'baseCommand': ['head'],
+                                    'inputs': [{'id': 'number_of_lines',
+                                                'type': 'int?',
+                                                'inputBinding': {'position': 0, 'prefix': '-n'}},
+                                               {'id': 'headinput', 'type': 'File',
+                                                'inputBinding': {'position': 1}}],
+                                    'outputs': [{'id': 'headoutput', 'type': 'stdout'}],
+                                    'label': 'head',
+                                    'stdout': 'head.out'},
+                            "in": {"headinput": "inputfile"},
+                            "out": []
+                        },
+                    "tail":
+                        {
+                            "run": {'class': 'CommandLineTool',
+                                    'id': 'tail',
+                                    'baseCommand': ['tail'],
+                                    'inputs': [{'id': 'number_of_lines',
+                                                'type': 'int?',
+                                                'inputBinding': {'position': 0, 'prefix': '-n'}},
+                                               {'id': 'tailinput', 'type': 'File',
+                                                'inputBinding': {'position': 1}}],
+                                    'outputs': [{'id': 'tailoutput', 'type': 'stdout'}],
+                                    'label': 'tail',
+                                    'stdout': 'tail.out'},
+                            "in": {"tailinput": "head/headoutput"},
+                            "out": []
+                        },
+                },
+                'requirements': {}
+            },
+            yaml.load(StringIO(final_workflow.to_yaml(nested=True)), Loader=yaml.Loader))
 
-if __name__ == '__main__':
-    unittest.main()
+    def test_connect_workflow_with_tool_packed_yaml(self):
+        workflow_1 = CWLWorkflow(id='w1')
+        head_tool: WorkflowComponent = CWLTool('head', {'class': 'CommandLineTool',
+                                                        'cwlVersion': 'v1.0',
+                                                        'id': 'head',
+                                                        'baseCommand': ['head'],
+                                                        'inputs': [{'id': 'number_of_lines',
+                                                                    'type': 'int?',
+                                                                    'inputBinding': {'position': 0, 'prefix': '-n'}},
+                                                                   {'id': 'headinput', 'type': 'File',
+                                                                    'inputBinding': {'position': 1}}],
+                                                        'outputs': [{'id': 'headoutput', 'type': 'stdout'}],
+                                                        'label': 'head',
+                                                        'stdout': 'head.out'})
+        tail_tool: WorkflowComponent = CWLTool('tail', {'class': 'CommandLineTool',
+                                                        'cwlVersion': 'v1.0',
+                                                        'id': 'tail',
+                                                        'baseCommand': ['tail'],
+                                                        'inputs': [{'id': 'number_of_lines',
+                                                                    'type': 'int?',
+                                                                    'inputBinding': {'position': 0, 'prefix': '-n'}},
+                                                                   {'id': 'tailinput', 'type': 'File',
+                                                                    'inputBinding': {'position': 1}}],
+                                                        'outputs': [{'id': 'tailoutput', 'type': 'stdout'}],
+                                                        'label': 'tail',
+                                                        'stdout': 'tail.out'})
+        workflow_1.add(head_tool, 'head')
+        workflow_1.add_input({'id': 'inputfile', 'type': 'File'}, step_id='head', in_step_id='headinput')
+        workflow_1.add(tail_tool, 'tail')
+        workflow_1.add_step_in(step='tail', name='tailinput', connect='head/headoutput')
+        self.assertDictEqual(
+            {
+                "cwlVersion": "v1.0",
+                "class": "Workflow",
+                "id": "main",
+                "inputs": [{'id': 'inputfile', 'type': 'File'}],
+                "outputs": [],
+                "steps": {
+                    "head":
+                        {
+                            "run": {'class': 'CommandLineTool',
+                                    'id': 'head',
+                                    'baseCommand': ['head'],
+                                    'inputs': [{'id': 'number_of_lines',
+                                                'type': 'int?',
+                                                'inputBinding': {'position': 0, 'prefix': '-n'}},
+                                               {'id': 'headinput', 'type': 'File',
+                                                'inputBinding': {'position': 1}}],
+                                    'outputs': [{'id': 'headoutput', 'type': 'stdout'}],
+                                    'label': 'head',
+                                    'stdout': 'head.out'},
+                            "in": {"headinput": "inputfile"},
+                            "out": []
+                        },
+                    "tail":
+                        {
+                            "run": {'class': 'CommandLineTool',
+                                    'id': 'tail',
+                                    'baseCommand': ['tail'],
+                                    'inputs': [{'id': 'number_of_lines',
+                                                'type': 'int?',
+                                                'inputBinding': {'position': 0, 'prefix': '-n'}},
+                                               {'id': 'tailinput', 'type': 'File',
+                                                'inputBinding': {'position': 1}}],
+                                    'outputs': [{'id': 'tailoutput', 'type': 'stdout'}],
+                                    'label': 'tail',
+                                    'stdout': 'tail.out'},
+                            "in": {"tailinput": "head/headoutput"},
+                            "out": []
+                        },
+                },
+                'requirements': {}
+            },
+            yaml.load(StringIO(workflow_1.to_yaml(nested=True)), Loader=yaml.Loader))
+        workflow_final = CWLWorkflow(id="main")
+        workflow_final.add(head_tool, 'head')
+        workflow_1.add_input({'id': 'inputfile', 'type': 'File'}, step_id='head', in_step_id='headinput')
+        workflow_final.add(workflow_1, 'workflow1')
+        workflow_1.add_step_in(step='workflow1', name='tailinput', connect='head/headoutput')
+        self.assertDictEqual(
+            {
+                "cwlVersion": "v1.0",
+                "class": "Workflow",
+                "id": "main",
+                "inputs": [{'id': 'inputfile', 'type': 'File'}],
+                "outputs": [],
+                "steps": {
+                    "head":
+                        {
+                            "run": {'class': 'CommandLineTool',
+                                    'id': 'head',
+                                    'baseCommand': ['head'],
+                                    'inputs': [{'id': 'number_of_lines',
+                                                'type': 'int?',
+                                                'inputBinding': {'position': 0, 'prefix': '-n'}},
+                                               {'id': 'headinput', 'type': 'File',
+                                                'inputBinding': {'position': 1}}],
+                                    'outputs': [{'id': 'headoutput', 'type': 'stdout'}],
+                                    'label': 'head',
+                                    'stdout': 'head.out'},
+                            "in": {"headinput": "inputfile"},
+                            "out": []
+                        },
+                    "workflow1": {
+                        "class": "Workflow",
+                        "id": "w1",
+                        "inputs": [{'id': 'inputfile', 'type': 'File'}],
+                        "outputs": [],
+                        "steps": {
+                            "head":
+                                {
+                                    "run": {'class': 'CommandLineTool',
+                                            'id': 'head',
+                                            'baseCommand': ['head'],
+                                            'inputs': [{'id': 'number_of_lines',
+                                                        'type': 'int?',
+                                                        'inputBinding': {'position': 0, 'prefix': '-n'}},
+                                                       {'id': 'headinput', 'type': 'File',
+                                                        'inputBinding': {'position': 1}}],
+                                            'outputs': [{'id': 'headoutput', 'type': 'stdout'}],
+                                            'label': 'head',
+                                            'stdout': 'head.out'},
+                                    "in": {"headinput": "inputfile"},
+                                    "out": []
+                                },
+                            "tail":
+                                {
+                                    "run": {'class': 'CommandLineTool',
+                                            'id': 'tail',
+                                            'baseCommand': ['tail'],
+                                            'inputs': [{'id': 'number_of_lines',
+                                                        'type': 'int?',
+                                                        'inputBinding': {'position': 0, 'prefix': '-n'}},
+                                                       {'id': 'tailinput', 'type': 'File',
+                                                        'inputBinding': {'position': 1}}],
+                                            'outputs': [{'id': 'tailoutput', 'type': 'stdout'}],
+                                            'label': 'tail',
+                                            'stdout': 'tail.out'},
+                                    "in": {"tailinput": "head/headoutput"},
+                                    "out": []
+                                },
+                        },
+                        'requirements': {}
+                    }
+                },
+                'requirements': {}
+            },
+            yaml.load(StringIO(workflow_final.to_yaml(nested=True)), Loader=yaml.Loader))
+
+        if __name__ == '__main__':
+            unittest.main()

@@ -4,6 +4,7 @@ import logging
 import os
 import tempfile
 import unittest
+import yaml
 from io import StringIO
 from ruamel.yaml import YAML
 from urllib.parse import urlparse
@@ -416,6 +417,72 @@ number_of_lines: 5
         self.assertDictEqual(
             yaml.load(StringIO(kernel._workflow_repository.__repo__.get_by_id("echo").to_yaml()), yaml.Loader),
             yaml.load(StringIO('\n'.join(echo_workflow)), yaml.Loader),
+        )
+
+    def test_compose(self):
+        from cwlkernel.CWLKernel import CWLKernel
+        kernel = CWLKernel()
+        # cancel send_response
+        responses = []
+        kernel.send_response = lambda *args, **kwargs: responses.append((args, kwargs))
+        with open(os.sep.join([self.cwl_directory, 'head.cwl'])) as f:
+            head = f.read()
+        with open(os.sep.join([self.cwl_directory, 'tail.cwl'])) as f:
+            tail = f.read()
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(head)
+        )
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(tail)
+        )
+
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute("""% newWorkflow main
+% newWorkflowAddStep tail tailstepid
+% newWorkflowAddStep head headstepid
+% newWorkflowAddInput headstepid headinput
+id: inputfile
+type: File
+% newWorkflowAddStepIn tailstepid 
+tailinput: headstepid/headoutput
+% newWorkflowBuild""")
+        )
+
+        self.assertDictEqual(
+            {
+                "cwlVersion": "v1.0",
+                "class": "Workflow",
+                "id": "main",
+                "inputs": [{'id': 'inputfile', 'type': 'File'}],
+                "outputs": [],
+                "steps": {
+                    "headstepid":
+                        {
+                            "run": "head",
+                            "in": {"headinput": "inputfile"},
+                            "out": []
+                        },
+                    "tailstepid":
+                        {
+                            "run": "tail",
+                            "in": {"tailinput": "headstepid/headoutput"},
+                            "out": []
+                        },
+                },
+                'requirements': {}
+            },
+            yaml.load(kernel._workflow_repository.get_by_id("main").to_yaml(), yaml.Loader),
+        )
+
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute("""% execute main
+inputfile: 
+    class: File
+    location: /Users/dks/Desktop/data.csv""")
         )
 
 

@@ -2,7 +2,7 @@ from collections import Iterable
 from copy import deepcopy
 from typing import Dict, Iterator, Optional
 
-from cwlkernel.cwlrepository.CWLComponent import WorkflowComponent
+from cwlkernel.cwlrepository.CWLComponent import WorkflowComponent, CWLWorkflow
 
 
 class WorkflowRepository(Iterable):
