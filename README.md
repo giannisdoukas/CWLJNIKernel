@@ -25,4 +25,3 @@ In examples directory there are many examples which illustrate how to use the ke
 ## How to contribute
 If you are a CWL developer and you would like to contribute feel free to open an issue and ask for new features you 
 would like to see. 
-

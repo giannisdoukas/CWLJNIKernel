@@ -2,6 +2,7 @@
 
 cwlVersion: v1.0
 class: CommandLineTool
+id: touch
 baseCommand: [touch, touchedfile.txt]
 inputs: {}
 outputs:

@@ -12,8 +12,10 @@ before_install:
 install:
   - pip install -r requirements.txt
   - pip install -r test-requirements.txt
+  - python setup.py install
 # command to run tests
 script:
+  - pycodestyle --max-line-length=119 $(find cwlkernel -name '*.py')
   - coverage run --source cwlkernel --omit cwlkernel/__main__.py -m unittest discover tests
 after_script:
   - coveralls
