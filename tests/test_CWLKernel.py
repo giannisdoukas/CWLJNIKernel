@@ -479,10 +479,10 @@ tailinput: headstepid/headoutput
 
         self.assertDictEqual(
             {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
-            kernel.do_execute("""% execute main
+            kernel.do_execute(f"""% execute main
 inputfile: 
     class: File
-    location: /Users/dks/Desktop/data.csv""")
+    location: {os.path.join(self.data_directory, "data.csv")}""")
         )
 
 
