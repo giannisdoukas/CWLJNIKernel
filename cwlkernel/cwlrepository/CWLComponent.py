@@ -175,7 +175,6 @@ class CWLWorkflow(WorkflowComponent):
         if step_out is not None and step_out_id is not None:
             self._steps[step_out]['out'].append(step_out_id)
 
-
     @property
     def inputs(self) -> List[Dict]:
         return deepcopy(self._inputs)
