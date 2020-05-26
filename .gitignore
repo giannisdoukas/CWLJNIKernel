@@ -145,3 +145,4 @@ tmp*.json
 
 workflow-examples/*
 /.python-version
+/tmp

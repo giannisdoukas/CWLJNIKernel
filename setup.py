@@ -14,13 +14,16 @@ setup(
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: Apache Software License",
-        "Operating System :: OS Independent",
-        "Development Status :: 2 - Pre-Alpha"
+        "Operating System :: MacOS",
+        "Operating System :: POSIX",
+        "Development Status :: 2 - Pre-Alpha",
+        "Framework :: IPython",
     ],
 )
 
 import sys
 import os
+
 kernel_requirements_directory = os.path.join(
     os.path.dirname(os.path.realpath(__file__)),
     'kernelmeta'
