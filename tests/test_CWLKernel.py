@@ -263,11 +263,8 @@ class TestCWLKernel(unittest.TestCase):
 
     def test_all_magic_commands_have_methods(self):
         kernel = CWLKernel()
-        for magic in kernel._magic_commands:
-            try:
-                kernel.__getattribute__(f'_execute_magic_{magic}')
-            except AttributeError as e:
-                self.fail(f'Missing function for magic command: {magic}. \nAttribute error raises: {e}')
+        for magic_name, magic_function in kernel._magic_commands.items():
+            hasattr(magic_function, '__call__')
 
     def test_display_json_output_after_execution(self):
         from cwlkernel.CWLKernel import CWLKernel
