@@ -1,11 +1,12 @@
 import os
 import shutil
+from copy import deepcopy
 from os import makedirs
+
 from os.path import exists
 from pathlib import Path
 from typing import List, Dict, Optional
 from urllib.parse import urlparse, ParseResult
-from copy import deepcopy
 
 
 class IOFileManager:
@@ -57,3 +58,8 @@ class IOFileManager:
 
     def get_files_uri(self) -> ParseResult:
         return urlparse(self.ROOT_DIRECTORY, scheme='file')
+
+    def clear(self):
+        for f in os.listdir(self.ROOT_DIRECTORY):
+            if os.path.isfile(f):
+                os.remove(f)

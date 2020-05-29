@@ -1,11 +1,12 @@
+import os
 import tarfile
+import tempfile
+from io import StringIO
 
 import logging
-import os
-import tempfile
 import unittest
 import yaml
-from io import StringIO
+from pathlib import Path
 from ruamel.yaml import YAML
 from urllib.parse import urlparse
 
@@ -26,7 +27,9 @@ class TestCWLKernel(unittest.TestCase):
         return kernel
 
     def setUp(self) -> None:
-        WorkflowRepository().delete()
+        import tempfile
+        WorkflowRepository(Path(tempfile.gettempdir()))
+        WorkflowRepository.get_instance().delete()
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -169,7 +172,7 @@ class TestCWLKernel(unittest.TestCase):
             'user_expressions': {},
         }, exec_result)
 
-    def test_history_magic_command(self):
+    def test_logs_magic_command(self):
         from cwlkernel.CWLKernel import CWLKernel
         kernel = CWLKernel()
         # cancel send_response
@@ -181,8 +184,13 @@ class TestCWLKernel(unittest.TestCase):
             {"status": "ok", "execution_count": 0, 'payload': [], 'user_expressions': {}},
             exec_response
         )
+        exec_response = kernel.do_execute('% logs')
+        self.assertDictEqual(
+            {"status": "ok", "execution_count": 0, 'payload': [], 'user_expressions': {}},
+            exec_response
+        )
         number_of_responses = len(responses)
-        self.assertGreater(number_of_responses, 1)
+        self.assertEqual(number_of_responses, 2)
         exec_response = kernel.do_execute('% logs 1')
         self.assertDictEqual(
             {"status": "ok", "execution_count": 0, 'payload': [], 'user_expressions': {}},

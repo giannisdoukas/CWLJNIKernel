@@ -1,21 +1,21 @@
-from io import StringIO
+import os
+import re
+import traceback
 
 import logging
-import os
-from typing import List, Dict, Optional, Tuple, Union, Set, Callable
-import re
 from ipykernel.kernelbase import Kernel
+from pathlib import Path
 from ruamel import yaml
 from ruamel.yaml import YAML
+from typing import List, Dict, Optional, Tuple, Union, Callable
 
 from cwlkernel.CWLBuilder import CWLSnippetBuilder
 from cwlkernel.CWLLogger import CWLLogger
 from .CWLExecuteConfigurator import CWLExecuteConfigurator
 from .CoreExecutor import CoreExecutor
 from .IOManager import IOFileManager
+from .cwlrepository.CWLComponent import WorkflowComponentFactory, CWLWorkflow
 from .cwlrepository.cwlrepository import WorkflowRepository
-from .cwlrepository.CWLComponent import WorkflowComponentFactory, WorkflowComponent, CWLWorkflow
-import traceback
 
 logger = logging.Logger('CWLKernel')
 
@@ -37,14 +37,15 @@ class CWLKernel(Kernel):
         super().__init__(**kwargs)
         conf = CWLExecuteConfigurator()
         self._yaml_input_data: Optional[str] = None
-        self._results_manager = IOFileManager(os.sep.join([conf.CWLKERNEL_BOOT_DIRECTORY, 'results']))
-        runtime_file_manager = IOFileManager(os.sep.join([conf.CWLKERNEL_BOOT_DIRECTORY, 'runtime_data']))
+        self._results_manager = IOFileManager(os.sep.join([conf.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'results']))
+        runtime_file_manager = IOFileManager(os.sep.join([conf.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'runtime_data']))
         self._cwl_executor = CoreExecutor(runtime_file_manager)
         self._pid = (os.getpid(), os.getppid())
-        self._cwl_logger = CWLLogger(os.path.join(conf.CWLKERNEL_BOOT_DIRECTORY, 'logs'))
+        self._cwl_logger = CWLLogger(os.path.join(conf.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'logs'))
         self._set_process_ids()
         self._cwl_logger.save()
-        self._workflow_repository = WorkflowRepository()
+        self._workflow_repository = WorkflowRepository(
+            Path(os.sep.join([conf.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'repo'])))
         self._snippet_builder = CWLSnippetBuilder()
         self._workflow_composer: Optional[CWLWorkflow] = None
 
