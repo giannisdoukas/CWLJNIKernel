@@ -1,14 +1,14 @@
 import json
+import logging
 import os
 import re
 import traceback
-
-import logging
-from ipykernel.kernelbase import Kernel
 from pathlib import Path
+from typing import List, Dict, Optional, Tuple, Union, Callable
+
+from ipykernel.kernelbase import Kernel
 from ruamel import yaml
 from ruamel.yaml import YAML
-from typing import List, Dict, Optional, Tuple, Union, Callable
 
 from cwlkernel.CWLBuilder import CWLSnippetBuilder
 from cwlkernel.CWLLogger import CWLLogger
@@ -22,6 +22,9 @@ logger = logging.Logger('CWLKernel')
 
 
 class CWLKernel(Kernel):
+    """
+    Jupyter Notebook kernel for CWL
+    """
     implementation = 'CWLKernel'
     implementation_version = '0.1'
     language_version = '1.0'
