@@ -1,3 +1,4 @@
+import json
 import os
 import tarfile
 import tempfile
@@ -307,7 +308,15 @@ class TestCWLKernel(unittest.TestCase):
             (None, 'display_data',
              {
                  'data': {
-                     'text/plain': '<IPython.core.display.JSON object>',
+                     'text/plain': json.dumps({
+                         'example_out': {
+                             'location': f'file://{tar_directory}/hello.txt', 'basename': 'hello.txt',
+                             'nameroot': 'hello', 'nameext': '.txt', 'class': 'File',
+                             'checksum': 'sha1$2aae6c35c94fcfb415dbe95f408b9ce91ee846ed', 'size': 11,
+                             'http://commonwl.org/cwltool#generation': 0,
+                             'id': 'example_out'
+                         }
+                     }),
                      'application/json': {
                          'example_out': {
                              'location': f'file://{tar_directory}/hello.txt', 'basename': 'hello.txt',
