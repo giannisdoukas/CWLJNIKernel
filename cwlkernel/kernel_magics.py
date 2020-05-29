@@ -99,6 +99,36 @@ def display_data(kernel: CWLKernel, data_name: str):
 
 
 @CWLKernel.register_magic
+def display_data_csv(kernel: CWLKernel, data_name):
+    import pandas as pd
+    if not isinstance(data_name, str) or len(data_name.split()) == 0:
+        kernel._send_error_response(
+            'ERROR: you must select an output to display. Correct format:\n % display_data [output name]'
+        )
+        return
+    results = list(
+        filter(lambda item: item[1]['id'] == data_name, kernel._results_manager.get_files_registry().items()))
+    if len(results) != 1:
+        kernel._send_error_response('Result not found')
+        return
+
+    results = results[0]
+    df = pd.read_csv(results[0])
+    kernel.send_response(
+        kernel.iopub_socket,
+        'display_data',
+        {
+            'data': {
+                "text/html": f"""{df.to_html()}""",
+                "text/plain": f"{str(df)}"
+            },
+            'metadata': {},
+        },
+
+    )
+
+
+@CWLKernel.register_magic
 def logs(kernel: CWLKernel, limit=None):
     limit_len = len(limit)
     if limit_len == 0:

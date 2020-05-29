@@ -1,3 +1,4 @@
+import json
 import os
 import re
 import traceback
@@ -156,7 +157,7 @@ class CWLKernel(Kernel):
             'display_data',
             {
                 'data': {
-                    'text/plain': '<IPython.core.display.JSON object>',
+                    'text/plain': json.dumps(json_data),
                     'application/json': json_data
                 },
                 'metadata': {
@@ -202,22 +203,7 @@ class CWLKernel(Kernel):
                     output_directory_for_that_run,
                     metadata=results[output]
                 )
-        self.send_response(
-            self.iopub_socket,
-            'display_data',
-            {
-                'data': {
-                    'text/plain': '<IPython.core.display.JSON object>',
-                    'application/json': results
-                },
-                'metadata': {
-                    'application/json': {
-                        'expanded': False,
-                        'root': 'root'
-                    }
-                }
-            }
-        )
+        self._send_json_response(results)
         if exception is not None:
             logger.debug(f'execution error: {exception}')
             self.send_response(self.iopub_socket, 'stream', {'name': 'stderr', 'text': str(exception)})
