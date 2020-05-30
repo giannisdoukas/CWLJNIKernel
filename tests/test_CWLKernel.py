@@ -1,13 +1,15 @@
-import tarfile
-
+import json
 import logging
 import os
+import tarfile
 import tempfile
 import unittest
-import yaml
 from io import StringIO
-from ruamel.yaml import YAML
+from pathlib import Path
 from urllib.parse import urlparse
+
+import yaml
+from ruamel.yaml import YAML
 
 from cwlkernel.CWLKernel import CWLKernel
 from cwlkernel.cwlrepository.cwlrepository import WorkflowRepository
@@ -26,7 +28,9 @@ class TestCWLKernel(unittest.TestCase):
         return kernel
 
     def setUp(self) -> None:
-        WorkflowRepository().delete()
+        import tempfile
+        WorkflowRepository(Path(tempfile.gettempdir()))
+        WorkflowRepository.get_instance().delete()
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -169,7 +173,7 @@ class TestCWLKernel(unittest.TestCase):
             'user_expressions': {},
         }, exec_result)
 
-    def test_history_magic_command(self):
+    def test_logs_magic_command(self):
         from cwlkernel.CWLKernel import CWLKernel
         kernel = CWLKernel()
         # cancel send_response
@@ -181,8 +185,13 @@ class TestCWLKernel(unittest.TestCase):
             {"status": "ok", "execution_count": 0, 'payload': [], 'user_expressions': {}},
             exec_response
         )
+        exec_response = kernel.do_execute('% logs')
+        self.assertDictEqual(
+            {"status": "ok", "execution_count": 0, 'payload': [], 'user_expressions': {}},
+            exec_response
+        )
         number_of_responses = len(responses)
-        self.assertGreater(number_of_responses, 1)
+        self.assertEqual(number_of_responses, 2)
         exec_response = kernel.do_execute('% logs 1')
         self.assertDictEqual(
             {"status": "ok", "execution_count": 0, 'payload': [], 'user_expressions': {}},
@@ -263,11 +272,8 @@ class TestCWLKernel(unittest.TestCase):
 
     def test_all_magic_commands_have_methods(self):
         kernel = CWLKernel()
-        for magic in kernel._magic_commands:
-            try:
-                kernel.__getattribute__(f'_execute_magic_{magic}')
-            except AttributeError as e:
-                self.fail(f'Missing function for magic command: {magic}. \nAttribute error raises: {e}')
+        for magic_name, magic_function in kernel._magic_commands.items():
+            hasattr(magic_function, '__call__')
 
     def test_display_json_output_after_execution(self):
         from cwlkernel.CWLKernel import CWLKernel
@@ -302,7 +308,15 @@ class TestCWLKernel(unittest.TestCase):
             (None, 'display_data',
              {
                  'data': {
-                     'text/plain': '<IPython.core.display.JSON object>',
+                     'text/plain': json.dumps({
+                         'example_out': {
+                             'location': f'file://{tar_directory}/hello.txt', 'basename': 'hello.txt',
+                             'nameroot': 'hello', 'nameext': '.txt', 'class': 'File',
+                             'checksum': 'sha1$2aae6c35c94fcfb415dbe95f408b9ce91ee846ed', 'size': 11,
+                             'http://commonwl.org/cwltool#generation': 0,
+                             'id': 'example_out'
+                         }
+                     }),
                      'application/json': {
                          'example_out': {
                              'location': f'file://{tar_directory}/hello.txt', 'basename': 'hello.txt',
@@ -446,7 +460,7 @@ number_of_lines: 5
 % newWorkflowAddInput headstepid headinput
 id: inputfile
 type: File
-% newWorkflowAddStepIn tailstepid 
+% newWorkflowAddStepIn tailstepid headstepid headoutput
 tailinput: headstepid/headoutput
 % newWorkflowBuild""")
         )
@@ -461,13 +475,13 @@ tailinput: headstepid/headoutput
                 "steps": {
                     "headstepid":
                         {
-                            "run": "head",
+                            "run": "head.cwl",
                             "in": {"headinput": "inputfile"},
-                            "out": []
+                            "out": ['headoutput']
                         },
                     "tailstepid":
                         {
-                            "run": "tail",
+                            "run": "tail.cwl",
                             "in": {"tailinput": "headstepid/headoutput"},
                             "out": []
                         },
@@ -479,10 +493,10 @@ tailinput: headstepid/headoutput
 
         self.assertDictEqual(
             {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
-            kernel.do_execute("""% execute main
+            kernel.do_execute(f"""% execute main
 inputfile: 
     class: File
-    location: /Users/dks/Desktop/data.csv""")
+    location: {os.path.join(self.data_directory, "data.csv")}""")
         )
 
 

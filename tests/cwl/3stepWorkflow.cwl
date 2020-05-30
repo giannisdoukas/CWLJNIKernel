@@ -26,7 +26,7 @@ steps:
     run: grep.cwl
     in:
       grepinput: head/headoutput
-      query: threesteps/query
+      query: query
       lines_bellow:
         valueFrom: ${return 5;}
     out: [grepoutput]

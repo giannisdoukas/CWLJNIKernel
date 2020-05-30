@@ -64,7 +64,6 @@ class CWLTool(WorkflowComponent):
     def to_yaml(self, nested=False) -> str:
         yaml_text = StringIO()
         yaml.dump(self.command_line_tool, yaml_text)
-
         return yaml_text.getvalue()
 
     def to_dict(self) -> Dict:
@@ -104,16 +103,7 @@ class CWLWorkflow(WorkflowComponent):
         steps = {}
         for step in self._steps:
             steps[step] = deepcopy(self._steps[step])
-            steps[step]['run'] = steps[step]['run']._id
-        return deepcopy(steps)
-
-    def _packed_steps(self):
-        steps = {}
-        for step in self._steps:
-            s = deepcopy(self._steps[step])
-            if isinstance(s['run'], WorkflowComponent):
-                s['run'] = s['run']._packed_steps()
-            steps[step] = s
+            steps[step]['run'] = f"{steps[step]['run']._id}.cwl"
         return deepcopy(steps)
 
     """
@@ -136,25 +126,12 @@ class CWLWorkflow(WorkflowComponent):
         self._steps[step_id]['in'][in_step_id] = workflow_input['id']
 
     def to_yaml(self, nested=False) -> str:
+        # TODO: remove nested argument
         yaml_text = StringIO()
-        if nested is True:
-            result = self._to_packed_dict()
-        else:
-            result = self.to_dict()
+        result = self.to_dict()
         yaml.dump(result, yaml_text)
         yaml_str = yaml_text.getvalue()
         return yaml_str
-
-    def _to_packed_dict(self) -> Dict:
-        return {
-            'cwlVersion': 'v1.0',
-            'class': 'Workflow',
-            'id': self.id,
-            'inputs': self._inputs,
-            'outputs': self._outputs,
-            'steps': self._packed_steps(),
-            'requirements': self._requirements
-        }
 
     def to_dict(self) -> Dict:
         return {
@@ -170,8 +147,11 @@ class CWLWorkflow(WorkflowComponent):
     def validate(self):
         raise NotImplementedError()
 
-    def add_step_in(self, step: str, name: str, connect: Union[str, dict]):
-        self._steps[step]['in'][name] = deepcopy(connect)
+    def add_step_in_out(self, connect: Union[str, dict], step_in_name: str, step_in: str,
+                        step_out: Optional[str] = None, step_out_id: Optional[str] = None):
+        self._steps[step_in]['in'][step_in_name] = deepcopy(connect)
+        if step_out is not None and step_out_id is not None:
+            self._steps[step_out]['out'].append(step_out_id)
 
     @property
     def inputs(self) -> List[Dict]:
