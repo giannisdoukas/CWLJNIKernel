@@ -129,6 +129,47 @@ def display_data_csv(kernel: CWLKernel, data_name):
 
 
 @CWLKernel.register_magic
+def display_data_image(kernel: CWLKernel, data_name):
+    import base64
+    if not isinstance(data_name, str) or len(data_name.split()) == 0:
+        kernel._send_error_response(
+            'ERROR: you must select an output to display. Correct format:\n % display_data [output name]'
+        )
+        return
+    results = list(
+        filter(lambda item: item[1]['id'] == data_name, kernel._results_manager.get_files_registry().items()))
+    if len(results) != 1:
+        kernel._send_error_response('Result not found')
+        return
+
+    results = results[0]
+    kernel.log.debug(results)
+    with open(results[0], 'rb') as f:
+        image = base64.b64encode(f.read()).decode()
+    if results[0].endswith('.png'):
+        mime = 'image/png'
+    elif results[0].endswith('.jpg') or results[0].endswith('.jpeg'):
+        mime = 'image/jpeg'
+    elif results[0].endswith('.svg'):
+        mime = 'image/svg+xml'
+    else:
+        raise ValueError(f'unsupported type {results[0]}')
+    image = f"""<image src="data:{mime}; base64, {image}" alt="{results[0]}">"""
+    kernel.send_response(
+        kernel.iopub_socket,
+        'display_data',
+        {
+            'data': {
+                "text/html": image,
+                "text/plain": f"{image}"
+            },
+            'metadata': {},
+        },
+
+    )
+
+
+@CWLKernel.register_magic
 def logs(kernel: CWLKernel, limit=None):
     limit_len = len(limit)
     if limit_len == 0:
