@@ -5,6 +5,8 @@ Welcome to CWLKernel's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+   cwlkernel
+   cwlkernel.cwlrepository
 
 
 Indices and tables
@@ -13,3 +15,4 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
+
