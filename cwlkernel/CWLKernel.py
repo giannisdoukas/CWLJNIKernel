@@ -182,10 +182,10 @@ class CWLKernel(Kernel):
     def _clear_data(self):
         self._yaml_input_data = None
 
-    def _execute_workflow(self, code) -> Optional[Exception]:
+    def _execute_workflow(self, code_path: Path) -> Optional[Exception]:
         input_data = [self._yaml_input_data] if self._yaml_input_data is not None else []
         self._cwl_executor.set_data(input_data)
-        self._cwl_executor.set_workflow(code)
+        self._cwl_executor.set_workflow_path(str(code_path))
         logger.debug('starting executing workflow ...')
         run_id, results, exception = self._cwl_executor.execute()
         logger.debug(f'\texecution results: {run_id}, {results}, {exception}')

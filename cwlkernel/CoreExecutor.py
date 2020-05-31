@@ -29,12 +29,12 @@ class CoreExecutor:
         self._data_paths = [self.file_manager.write(f'{str(uuid4())}.yml', d.encode()) for d in data]
         return self._data_paths
 
-    def set_workflow(self, workflow_str: str) -> str:
+    def set_workflow_path(self, workflow_str: str) -> str:
         """
         :param workflow_str: the cwl
         :return: the path where we executor stored the workflow
         """
-        self._workflow_path = self.file_manager.write(f'{str(uuid4())}.cwl', workflow_str.encode())
+        self._workflow_path = workflow_str
         return self._workflow_path
 
     def execute(self) -> Tuple[UUID, Dict, Optional[Exception]]:

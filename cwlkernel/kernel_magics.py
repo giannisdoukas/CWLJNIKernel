@@ -74,9 +74,9 @@ def snippet(kernel: CWLKernel, command: str):
 def execute(kernel: CWLKernel, execute_argument_string: str):
     execute_argument_string = execute_argument_string.splitlines()
     cwl_id = execute_argument_string[0].strip()
-    cwl_component: WorkflowComponent = kernel._workflow_repository.get_by_id(cwl_id)
+    cwl_component_path: WorkflowComponent = kernel._workflow_repository.get_tools_path_by_id(cwl_id)
     kernel._set_data('\n'.join(execute_argument_string[1:]))
-    kernel._execute_workflow(cwl_component.to_yaml(True))
+    kernel._execute_workflow(cwl_component_path)
     kernel._clear_data()
 
 
