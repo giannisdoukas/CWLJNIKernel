@@ -4,7 +4,7 @@ import os
 import re
 import traceback
 from pathlib import Path
-from typing import List, Dict, Optional, Tuple, Union, Callable
+from typing import List, Dict, Optional, Tuple, Union, Callable, NoReturn
 
 from ipykernel.kernelbase import Kernel
 from ruamel import yaml
@@ -81,65 +81,39 @@ class CWLKernel(Kernel):
 
     def do_execute(self, code: str, silent=False, store_history: bool = True,
                    user_expressions=None, allow_stdin: bool = False) -> Dict:
+        status = 'ok'
         try:
             if self._is_magic_command(code):
                 self._do_execute_magic_command(code)
-                status = 'ok'
             else:
                 dict_code = self._code_is_valid_yaml(code)
                 if dict_code is None:
                     raise RuntimeError('Input cannot be parsed')
                 else:
-                    status, exception = self._do_execute_yaml(dict_code, code)
-                    if exception is not None:
-                        traceback.print_exc()
-                        self.send_response(
-                            self.iopub_socket, 'stream',
-                            {'name': 'stderr', 'text': f'{type(exception).__name__}: {exception}'}
-                        )
+                    self._do_execute_yaml(dict_code, code)
         except Exception as e:
+            status = 'error'
             traceback.print_exc()
-            self.send_response(
-                self.iopub_socket, 'stream',
-                {'name': 'stderr', 'text': f'{type(e).__name__}: {e}'}
-            )
+            self._send_error_response(f'{type(e).__name__}: {e}')
+        finally:
             return {
-                'status': 'error',
+                'status': status,
                 # The base class increments the execution count
                 'execution_count': self.execution_count,
                 'payload': [],
                 'user_expressions': {},
             }
-        return {
-            'status': status,
-            # The base class increments the execution count
-            'execution_count': self.execution_count,
-            'payload': [],
-            'user_expressions': {},
-        }
 
     def _do_execute_yaml(self, dict_code, code):
-        exception = None
         if not self._is_cwl(dict_code):
             raise NotImplementedError()
         else:
-            try:
-                cwl_component = WorkflowComponentFactory().get_workflow_component(code)
-                self._workflow_repository.register_tool(cwl_component)
-                self.send_response(
-                    self.iopub_socket, 'stream',
-                    {'name': 'stdout', 'text': f"tool '{cwl_component.id}' registered"}
-                )
-            except Exception as e:
-                exception = e
-
-        status = 'ok' if exception is None else 'error'
-        if exception is not None:
+            cwl_component = WorkflowComponentFactory().get_workflow_component(code)
+            self._workflow_repository.register_tool(cwl_component)
             self.send_response(
                 self.iopub_socket, 'stream',
-                {'name': 'stderr', 'text': f'{type(exception).__name__}: {exception}'}
+                {'name': 'stdout', 'text': f"tool '{cwl_component.id}' registered"}
             )
-        return status, exception
 
     def _do_execute_magic_command(self, commands: str):
         for command in re.compile(r'^%[ ]+', re.MULTILINE).split(commands):
@@ -152,7 +126,7 @@ class CWLKernel(Kernel):
             self._magic_commands[command_name](self, args)
 
     def _send_error_response(self, text):
-        self.send_response(self.iopub_socket, 'stream', {'name': 'stdout', 'text': text})
+        self.send_response(self.iopub_socket, 'stream', {'name': 'stderr', 'text': text})
 
     def _send_json_response(self, json_data: Union[Dict, List]):
         self.send_response(
@@ -172,7 +146,7 @@ class CWLKernel(Kernel):
             }
         )
 
-    def _set_data(self, code: str) -> Optional[Exception]:
+    def _set_data(self, code: str) -> NoReturn:
         if len(code.split()) > 0:
             cwl = self._cwl_executor.file_manager.get_files_uri().path
             self._cwl_executor.validate_input_files(yaml.load(code, Loader=yaml.Loader), cwl)
