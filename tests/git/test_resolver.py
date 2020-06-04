@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from git.CWLGitResolver import CWLGitResolver
+from cwlkernel.git.CWLGitResolver import CWLGitResolver
 
 
 class GitResolverTest(unittest.TestCase):
