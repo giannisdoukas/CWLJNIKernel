@@ -42,9 +42,9 @@ class CWLGitResolver:
         url = urljoin(f"https://api.github.com/repos/{self._git_owner}/{self._git_repo}/contents/",
                       f"{path}?ref={self._git_branch}")
         github_response = requests.get(url)
-        github_response = json.loads(github_response.text)
         if github_response.status_code != 200:
             raise RuntimeError(f"Error on github api call: {github_response.status_code}: {github_response.text}")
+        github_response = json.loads(github_response.text)
         workflow = yaml.load(BytesIO(base64.b64decode(github_response['content'])), yaml.Loader)
         workflow_filename = os.path.join(str(self._local_directory), path)
         Path(os.path.dirname(workflow_filename)).mkdir(exist_ok=True, parents=True)
