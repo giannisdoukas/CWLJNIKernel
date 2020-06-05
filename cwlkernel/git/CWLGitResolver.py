@@ -25,7 +25,7 @@ class CWLGitResolver:
     def resolve(self) -> List[str]:
         workflow_files = set()
         root_path = self._git_path[:self._git_path.rfind('/')]
-        search_stack = [self._git_path]
+        search_stack = {self._git_path}
         while len(search_stack) > 0:
             current_path = search_stack.pop()
             if current_path not in workflow_files:
@@ -34,7 +34,9 @@ class CWLGitResolver:
                 if 'steps' in workflow:
                     for step in workflow['steps']:
                         if isinstance(workflow['steps'][step]['run'], str):
-                            search_stack.append('/'.join([root_path, workflow['steps'][step]['run']]))
+                            file = '/'.join([root_path, workflow['steps'][step]['run']])
+                            if file not in workflow_files and file not in search_stack:
+                                search_stack.add(file)
         return list(workflow_files)
 
     def _resolve_file(self, path: str) -> Tuple[str, Dict]:
