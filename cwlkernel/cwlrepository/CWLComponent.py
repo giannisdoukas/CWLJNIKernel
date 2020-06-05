@@ -103,7 +103,8 @@ class CWLWorkflow(WorkflowComponent):
         steps = {}
         for step in self._steps:
             steps[step] = deepcopy(self._steps[step])
-            steps[step]['run'] = f"{steps[step]['run']._id}.cwl"
+            if not isinstance(steps[step]['run'], str):
+                steps[step]['run'] = f"{steps[step]['run']._id}.cwl"
         return deepcopy(steps)
 
     """
@@ -162,7 +163,7 @@ class CWLWorkflow(WorkflowComponent):
         return deepcopy(self._outputs)
 
 
-class WorkflowComponentFactory():
+class WorkflowComponentFactory:
     def get_workflow_component(self, yaml_string: str) -> WorkflowComponent:
         component = yaml.load(StringIO(yaml_string), yaml.SafeLoader)
         if 'id' not in component:

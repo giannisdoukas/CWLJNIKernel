@@ -10,6 +10,7 @@ from cwlkernel.git.CWLGitResolver import CWLGitResolver
 
 
 class GitResolverTest(unittest.TestCase):
+    maxDiff = None
 
     @classmethod
     def set_mock_github_responses(cls):
@@ -89,15 +90,16 @@ class GitResolverTest(unittest.TestCase):
     def test_resolve(self):
         git_dir = Path(tempfile.mkdtemp())
         self.set_mock_github_responses()
-        git_resolver = CWLGitResolver(
-            git_dir,
-            "https://github.com/giannisdoukas/CWLJNIKernel/blob/dev/tests/cwl/3stepWorkflow.cwl")
+        git_resolver = CWLGitResolver(git_dir)
         self.assertListEqual(
             sorted([
                 os.path.join(git_dir, f) for f in
-                ['tests/cwl/3stepWorkflow.cwl', 'tests/cwl/head.cwl', 'tests/cwl/grep.cwl']
+                ['giannisdoukas/CWLJNIKernel/tests/cwl/3stepWorkflow.cwl',
+                 'giannisdoukas/CWLJNIKernel/tests/cwl/head.cwl',
+                 'giannisdoukas/CWLJNIKernel/tests/cwl/grep.cwl']
             ]),
-            sorted(git_resolver.resolve())
+            sorted(git_resolver.resolve(
+                "https://github.com/giannisdoukas/CWLJNIKernel/blob/dev/tests/cwl/3stepWorkflow.cwl"))
         )
         unstub()
 
