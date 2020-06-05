@@ -1,5 +1,4 @@
 import base64
-import json
 import os.path
 from io import BytesIO
 from pathlib import Path
@@ -45,7 +44,7 @@ class CWLGitResolver:
         if github_response.status_code != 200:
             raise RuntimeError(
                 f"Error on github api call for: {url}: {github_response.status_code}: {github_response.text}")
-        github_response = json.loads(github_response.text)
+        github_response = github_response.json()
         workflow = yaml.load(BytesIO(base64.b64decode(github_response['content'])), yaml.Loader)
         workflow_filename = os.path.join(str(self._local_directory), path)
         Path(os.path.dirname(workflow_filename)).mkdir(exist_ok=True, parents=True)
