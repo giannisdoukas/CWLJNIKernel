@@ -10,13 +10,14 @@ from ipykernel.kernelbase import Kernel
 from ruamel import yaml
 from ruamel.yaml import YAML
 
-from cwlkernel.CWLBuilder import CWLSnippetBuilder
-from cwlkernel.CWLLogger import CWLLogger
+from .CWLBuilder import CWLSnippetBuilder
 from .CWLExecuteConfigurator import CWLExecuteConfigurator
+from .CWLLogger import CWLLogger
 from .CoreExecutor import CoreExecutor
 from .IOManager import IOFileManager
 from .cwlrepository.CWLComponent import WorkflowComponentFactory, CWLWorkflow
 from .cwlrepository.cwlrepository import WorkflowRepository
+from .git.CWLGitResolver import CWLGitResolver
 
 logger = logging.Logger('CWLKernel')
 
@@ -52,6 +53,8 @@ class CWLKernel(Kernel):
             Path(os.sep.join([conf.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'repo'])))
         self._snippet_builder = CWLSnippetBuilder()
         self._workflow_composer: Optional[CWLWorkflow] = None
+        self._github_resolver: CWLGitResolver = CWLGitResolver(
+            Path(os.sep.join([conf.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'git'])))
 
     @staticmethod
     def register_magic(magic: Callable):

@@ -15,7 +15,7 @@ class CWLComponentTest(unittest.TestCase):
     maxDiff = None
 
     def test_simple_composition(self):
-        final_workflow = CWLWorkflow(id='one-step')
+        final_workflow = CWLWorkflow(workflow_id='one-step')
         head_tool: WorkflowComponent = CWLTool('head', {'class': 'CommandLineTool',
                                                         'cwlVersion': 'v1.0',
                                                         'id': 'head',
@@ -54,7 +54,7 @@ class CWLComponentTest(unittest.TestCase):
             yaml.load(StringIO(final_workflow.to_yaml()), Loader=yaml.BaseLoader))
 
     def test_two_connect_io_between_steps(self):
-        final_workflow = CWLWorkflow(id='main')
+        final_workflow = CWLWorkflow(workflow_id='main')
         head_tool: WorkflowComponent = CWLTool('head', {'class': 'CommandLineTool',
                                                         'cwlVersion': 'v1.0',
                                                         'id': 'head',
@@ -110,7 +110,7 @@ class CWLComponentTest(unittest.TestCase):
             yaml.load(StringIO(final_workflow.to_yaml()), Loader=yaml.BaseLoader))
 
     def test_two_connect_io_between_steps_nested_yaml(self):
-        final_workflow = CWLWorkflow(id='main')
+        final_workflow = CWLWorkflow(workflow_id='main')
         head_tool: WorkflowComponent = CWLTool('head', {'class': 'CommandLineTool',
                                                         'cwlVersion': 'v1.0',
                                                         'id': 'head',
@@ -163,10 +163,10 @@ class CWLComponentTest(unittest.TestCase):
                 },
                 'requirements': {}
             },
-            yaml.load(StringIO(final_workflow.to_yaml(nested=True)), Loader=yaml.Loader))
+            yaml.load(StringIO(final_workflow.to_yaml()), Loader=yaml.Loader))
 
     def test_connect_workflow_with_tool(self):
-        workflow_1 = CWLWorkflow(id='w1')
+        workflow_1 = CWLWorkflow(workflow_id='w1')
         head_tool: WorkflowComponent = CWLTool('head', {'class': 'CommandLineTool',
                                                         'cwlVersion': 'v1.0',
                                                         'id': 'head',
@@ -219,9 +219,9 @@ class CWLComponentTest(unittest.TestCase):
                 },
                 'requirements': {}
             },
-            yaml.load(StringIO(workflow_1.to_yaml(nested=True)), Loader=yaml.Loader)
+            yaml.load(StringIO(workflow_1.to_yaml()), Loader=yaml.Loader)
         )
-        workflow_final = CWLWorkflow(id="main")
+        workflow_final = CWLWorkflow(workflow_id="main")
         workflow_final.add(head_tool, 'head')
         workflow_final.add_input({'id': 'inputfile', 'type': 'File'}, step_id='head', in_step_id='headinput')
         workflow_final.add(workflow_1, 'workflow1')
@@ -249,7 +249,7 @@ class CWLComponentTest(unittest.TestCase):
                 },
                 'requirements': {}
             },
-            yaml.load(StringIO(workflow_final.to_yaml(nested=True)), Loader=yaml.Loader))
+            yaml.load(StringIO(workflow_final.to_yaml()), Loader=yaml.Loader))
 
     def test_file_repository(self):
         conf = CWLExecuteConfigurator()

@@ -2,8 +2,8 @@ from io import StringIO
 
 from ruamel.yaml import YAML
 
-from cwlkernel.cwlrepository.CWLComponent import CWLWorkflow, WorkflowComponent
 from .CWLKernel import CWLKernel
+from .cwlrepository.CWLComponent import CWLWorkflow, WorkflowComponent, WorkflowComponentFactory
 
 
 @CWLKernel.register_magic
@@ -215,3 +215,24 @@ def data(kernel: CWLKernel, *args):
             }
         }
     )
+
+
+@CWLKernel.register_magic
+def githubImport(kernel: CWLKernel, url: str):
+    cwl_factory = WorkflowComponentFactory()
+    for cwl_file in kernel._github_resolver.resolve(url):
+        with open(cwl_file) as f:
+            file_data = f.read()
+        cwl_component = cwl_factory.get_workflow_component(file_data)
+        kernel._workflow_repository.register_tool(cwl_component)
+        kernel.send_response(kernel.iopub_socket, 'stream',
+                             {'name': 'stdout', 'text': f"tool '{cwl_component.id}' registered\n"})
+
+
+@CWLKernel.register_magic
+def viewTool(kernel: CWLKernel, workflow_id: str):
+    workflow = kernel._workflow_repository.__repo__.get_by_id(workflow_id)
+    if workflow is not None:
+        kernel._send_json_response(workflow.to_dict())
+    else:
+        kernel._send_error_response(f"Tool '{workflow_id}' is not registered")

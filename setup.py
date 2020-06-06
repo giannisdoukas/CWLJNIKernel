@@ -28,7 +28,7 @@ with open("README.md", "r") as fh:
 setup(
     name=name,
     version=get_version(f"{name}/__init__.py"),
-    packages=['cwlkernel', 'cwlkernel.cwlrepository'],
+    packages=['cwlkernel', 'cwlkernel.cwlrepository', 'cwlkernel.git'],
     url='https://github.com/giannisdoukas/CWLJNIKernel',
     author='Yannis Doukas',
     author_email='giannisdoukas2311@gmail.com',
