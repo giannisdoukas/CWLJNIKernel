@@ -163,7 +163,7 @@ class CWLComponentTest(unittest.TestCase):
                 },
                 'requirements': {}
             },
-            yaml.load(StringIO(final_workflow.to_yaml(nested=True)), Loader=yaml.Loader))
+            yaml.load(StringIO(final_workflow.to_yaml()), Loader=yaml.Loader))
 
     def test_connect_workflow_with_tool(self):
         workflow_1 = CWLWorkflow(workflow_id='w1')
@@ -219,7 +219,7 @@ class CWLComponentTest(unittest.TestCase):
                 },
                 'requirements': {}
             },
-            yaml.load(StringIO(workflow_1.to_yaml(nested=True)), Loader=yaml.Loader)
+            yaml.load(StringIO(workflow_1.to_yaml()), Loader=yaml.Loader)
         )
         workflow_final = CWLWorkflow(workflow_id="main")
         workflow_final.add(head_tool, 'head')
@@ -249,7 +249,7 @@ class CWLComponentTest(unittest.TestCase):
                 },
                 'requirements': {}
             },
-            yaml.load(StringIO(workflow_final.to_yaml(nested=True)), Loader=yaml.Loader))
+            yaml.load(StringIO(workflow_final.to_yaml()), Loader=yaml.Loader))
 
     def test_file_repository(self):
         conf = CWLExecuteConfigurator()
