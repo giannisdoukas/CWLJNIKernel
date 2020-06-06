@@ -21,7 +21,7 @@ class WorkflowComponent(ABC):
         return self._id
 
     @abstractmethod
-    def to_yaml(self, nested=False) -> str:
+    def to_yaml(self) -> str:
         pass
 
     @abstractmethod
@@ -61,7 +61,7 @@ class CWLTool(WorkflowComponent):
     def command_line_tool(self, command_line_tool: Dict):
         self._command_line_tool = command_line_tool
 
-    def to_yaml(self, nested=False) -> str:
+    def to_yaml(self) -> str:
         yaml_text = StringIO()
         yaml.dump(self.command_line_tool, yaml_text)
         return yaml_text.getvalue()
@@ -126,8 +126,7 @@ class CWLWorkflow(WorkflowComponent):
         self._inputs.append(workflow_input)
         self._steps[step_id]['in'][in_step_id] = workflow_input['id']
 
-    def to_yaml(self, nested=False) -> str:
-        # TODO: remove nested argument
+    def to_yaml(self) -> str:
         yaml_text = StringIO()
         result = self.to_dict()
         yaml.dump(result, yaml_text)
