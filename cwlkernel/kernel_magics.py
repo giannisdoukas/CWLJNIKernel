@@ -227,3 +227,12 @@ def githubImport(kernel: CWLKernel, url: str):
         kernel._workflow_repository.register_tool(cwl_component)
         kernel.send_response(kernel.iopub_socket, 'stream',
                              {'name': 'stdout', 'text': f"tool '{cwl_component.id}' registered\n"})
+
+
+@CWLKernel.register_magic
+def viewTool(kernel: CWLKernel, workflow_id: str):
+    workflow = kernel._workflow_repository.__repo__.get_by_id(workflow_id)
+    if workflow is not None:
+        kernel._send_json_response(workflow.to_dict())
+    else:
+        kernel._send_error_response(f"Tool '{workflow_id}' is not registered")

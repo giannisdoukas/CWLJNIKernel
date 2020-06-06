@@ -359,7 +359,6 @@ class TestCWLKernel(unittest.TestCase):
         )
 
     def test_execute_multiple_steps(self):
-        from cwlkernel.CWLKernel import CWLKernel
         kernel = CWLKernel()
         # cancel send_response
         responses = []
@@ -436,7 +435,6 @@ number_of_lines: 5
         )
 
     def test_compose(self):
-        from cwlkernel.CWLKernel import CWLKernel
         kernel = CWLKernel()
         # cancel send_response
         responses = []
@@ -591,6 +589,79 @@ inputfile:
     class: File
     location: {os.sep.join([self.cwl_directory, '3stepWorkflow.cwl'])}
 query: id""")
+        )
+
+    def test_githubImport_without_id(self):
+        when(requests) \
+            .get("https://api.github.com/repos/giannisdoukas/CWLJNIKernel/contents/tests/cwl/without_id.cwl?ref=dev") \
+            .thenReturn(mock({
+            'status_code': 200,
+            'json': lambda: {
+                "name": "without_id.cwl",
+                "path": "tests/cwl/without_id.cwl",
+                "sha": "8dd9d522c666d469c75bac566957e78acdb4a5f6",
+                "size": 129,
+                "url": "https://api.github.com/repos/giannisdoukas/CWLJNIKernel/contents/tests/cwl/without_id.cwl?ref=dev",
+                "html_url": "https://github.com/giannisdoukas/CWLJNIKernel/blob/dev/tests/cwl/without_id.cwl",
+                "git_url": "https://api.github.com/repos/giannisdoukas/CWLJNIKernel/git/blobs/8dd9d522c666d469c75bac566957e78acdb4a5f6",
+                "download_url": "https://raw.githubusercontent.com/giannisdoukas/CWLJNIKernel/dev/tests/cwl/without_id.cwl",
+                "type": "file",
+                "content": "Y3dsVmVyc2lvbjogdjEuMApjbGFzczogQ29tbWFuZExpbmVUb29sCmJhc2VD\nb21tYW5kOiBbZWNobywgImhlbGxvIHdvcmxkIl0KaW5wdXRzOiBbXQpvdXRw\ndXRzOgogIGV4YW1wbGVfb3V0cHV0OgogICAgdHlwZTogc3Rkb3V0\n",
+                "encoding": "base64",
+                "_links": {
+                    "self": "https://api.github.com/repos/giannisdoukas/CWLJNIKernel/contents/tests/cwl/without_id.cwl?ref=dev",
+                    "git": "https://api.github.com/repos/giannisdoukas/CWLJNIKernel/git/blobs/8dd9d522c666d469c75bac566957e78acdb4a5f6",
+                    "html": "https://github.com/giannisdoukas/CWLJNIKernel/blob/dev/tests/cwl/without_id.cwl"
+                }
+            }}))
+
+        kernel = CWLKernel()
+        # cancel send_response
+        responses = []
+        kernel.send_response = lambda *args, **kwargs: responses.append((args, kwargs))
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(
+                "% githubImport https://github.com/giannisdoukas/CWLJNIKernel/blob/dev/tests/cwl/without_id.cwl")
+        )
+        self.assertRegex(responses[-1][0][2]['text'], r"^tool '[a-zA-Z0-9-]+' registered")
+
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(f"""% execute {responses[-1][0][2]['text'].split("'")[1]}""")
+        )
+
+    def test_viewTool(self):
+        kernel = CWLKernel()
+        # cancel send_response
+        responses = []
+        kernel.send_response = lambda *args, **kwargs: responses.append((args, kwargs))
+
+        with open(os.sep.join([self.cwl_directory, 'echo.cwl'])) as f:
+            cwl_string = f.read()
+
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(f"""{cwl_string}""")
+        )
+
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(f"""% viewTool x""")
+        )
+        self.assertEqual(
+            "Tool 'x' is not registered",
+            responses[-1][0][2]['text']
+        )
+
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(f"""% viewTool echo""")
+        )
+
+        self.assertDictEqual(
+            yaml.load(StringIO(cwl_string), yaml.Loader),
+            responses[-1][0][2]['data']['application/json']
         )
 
 

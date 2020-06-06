@@ -1,3 +1,4 @@
+import uuid
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from io import StringIO
@@ -7,9 +8,10 @@ import yaml
 
 
 class WorkflowComponent(ABC):
+    _id: str
 
     def __init__(self, id: str, component: Optional[Dict]):
-        self._id = id
+        self._id: str = id
         if component is not None:
             if isinstance(component['inputs'], Dict):
                 component['inputs'] = self._convert_inputs_from_dict_to_list(component['inputs'])
@@ -17,7 +19,7 @@ class WorkflowComponent(ABC):
                 component['outputs'] = self._convert_inputs_from_dict_to_list(component['outputs'])
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._id
 
     @abstractmethod
@@ -85,8 +87,8 @@ class CWLTool(WorkflowComponent):
 
 class CWLWorkflow(WorkflowComponent):
 
-    def __init__(self, id: str, workflow: Optional[Dict] = None) -> None:
-        super().__init__(id, workflow)
+    def __init__(self, workflow_id: str, workflow: Optional[Dict] = None) -> None:
+        super().__init__(workflow_id, workflow)
         if workflow is None:
             self._inputs: List[Dict] = []
             self._outputs: List[Dict] = []
@@ -96,7 +98,9 @@ class CWLWorkflow(WorkflowComponent):
             self._inputs: List[Dict] = deepcopy(workflow['inputs'])
             self._outputs: List[Dict] = deepcopy(workflow['outputs'])
             self._steps: Dict = deepcopy(workflow['steps'])
-            self._requirements: Dict = deepcopy(workflow['requirements'])
+            self._requirements = {}
+            if 'requirements' in workflow:
+                self._requirements: Dict = deepcopy(workflow['requirements'])
 
     @property
     def steps(self):
@@ -166,7 +170,7 @@ class WorkflowComponentFactory:
     def get_workflow_component(self, yaml_string: str) -> WorkflowComponent:
         component = yaml.load(StringIO(yaml_string), yaml.SafeLoader)
         if 'id' not in component:
-            raise ValueError("cwl must contains an id")
+            component['id'] = str(uuid.uuid4())
         if component['class'] == 'CommandLineTool':
             return CWLTool(component['id'], component)
         elif component['class'] == 'Workflow':
