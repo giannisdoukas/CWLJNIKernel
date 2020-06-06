@@ -250,13 +250,12 @@ class TestCWLKernel(unittest.TestCase):
         with open(os.sep.join([self.cwl_directory, 'without_id.cwl'])) as f:
             workflow_str = f.read()
         self.assertDictEqual(
-            {'status': 'error', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
             kernel.do_execute(workflow_str)
         )
-        self.assertTupleEqual(
-            ((None, 'stream', {'name': 'stderr', 'text': "ValueError: cwl must contains an id"}),
-             {}),
-            responses[-1]
+        self.assertRegex(
+            responses[-1][0][2]['text'],
+            r"^tool '[a-zA-Z0-9-]+' registered"
         )
 
         with open(os.sep.join([self.cwl_directory, 'echo.cwl'])) as f:
