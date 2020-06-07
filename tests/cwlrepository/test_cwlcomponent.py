@@ -1,4 +1,6 @@
+import logging
 import os
+import tempfile
 import unittest
 import uuid
 from io import StringIO
@@ -7,12 +9,22 @@ from pathlib import Path
 import yaml
 
 from cwlkernel.CWLExecuteConfigurator import CWLExecuteConfigurator
-from cwlkernel.cwlrepository.CWLComponent import WorkflowComponent, CWLTool, CWLWorkflow
+from cwlkernel.cwlrepository.CWLComponent import WorkflowComponent, CWLTool, CWLWorkflow, WorkflowComponentFactory
 from cwlkernel.cwlrepository.cwlrepository import WorkflowRepository
 
 
 class CWLComponentTest(unittest.TestCase):
     maxDiff = None
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        logging.basicConfig(
+            level=logging.DEBUG,
+            format='%(asctime)-15s:%(levelname)s:%(name)s:%(process)d:%(message)s'
+        )
+        cls.data_directory = os.sep.join([os.path.dirname(os.path.realpath(__file__)), '..', 'input_data'])
+        cls.cwl_directory = os.sep.join([os.path.dirname(os.path.realpath(__file__)), '..', 'cwl'])
+        cls.kernel_root_directory = tempfile.mkdtemp()
 
     def test_simple_composition(self):
         final_workflow = CWLWorkflow(workflow_id='one-step')
@@ -247,7 +259,7 @@ class CWLComponentTest(unittest.TestCase):
                         "out": [],
                     }
                 },
-                'requirements': {}
+                'requirements': {'SubworkflowFeatureRequirement': {}}
             },
             yaml.load(StringIO(workflow_final.to_yaml()), Loader=yaml.Loader))
 
@@ -270,6 +282,28 @@ class CWLComponentTest(unittest.TestCase):
         repo.register_tool(head_tool)
         self.assertEqual(os.path.realpath(repo.get_tools_path_by_id('head').absolute()),
                          os.path.realpath(os.path.join(location, 'head.cwl')))
+
+    def test_connect_workflow_with_workflow(self):
+        cwl_factory = WorkflowComponentFactory()
+        with open(os.sep.join([self.cwl_directory, 'scatter_head.cwl'])) as f:
+            scatter_head: CWLWorkflow = cwl_factory.get_workflow_component(f.read())
+        with open(os.sep.join([self.cwl_directory, 'scatter_tail.cwl'])) as f:
+            scatter_tail: CWLWorkflow = cwl_factory.get_workflow_component(f.read())
+        with open(os.sep.join([self.cwl_directory, 'composed_workflows.cwl'])) as f:
+            expected_workflow = yaml.load(StringIO(f.read()), yaml.Loader)
+        final_workflow = CWLWorkflow(workflow_id='scatter-head-tail')
+        final_workflow.add(scatter_head, 'head')
+        final_workflow.add(scatter_tail, 'tail')
+        final_workflow.add_input({'id': 'files', 'type': 'File[]'}, 'head', 'files')
+        final_workflow.add_step_in_out(
+            connect='head/output_files',
+            step_in_name='files',
+            step_in='tail',
+            step_out='head',
+            step_out_id='output_files',
+        )
+        final_workflow.add_output_source('tail/output_files', 'File[]')
+        self.assertDictEqual(expected_workflow, final_workflow.to_dict())
 
 
 if __name__ == '__main__':

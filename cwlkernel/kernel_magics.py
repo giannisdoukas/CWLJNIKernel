@@ -45,6 +45,12 @@ def newWorkflowAddStep(kernel: CWLKernel, ids: str):
 
 
 @CWLKernel.register_magic
+def newWorkflowAddOutputSource(kernel: CWLKernel, args: str):
+    reference, type_of = args.split()
+    kernel._workflow_composer.add_output_source(reference, type_of)
+
+
+@CWLKernel.register_magic
 def newWorkflow(kernel: CWLKernel, id: str):
     kernel._workflow_composer = CWLWorkflow(id)
 

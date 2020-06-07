@@ -1,11 +1,11 @@
-cwlVersion: v1.1
+cwlVersion: v1.0
 class: Workflow
 id: scatter-head-tail
 inputs:
-  files:
+  - id: files
     type: File[]
 outputs:
-  output_files:
+  - id: output_files
     type: File[]
     outputSource: tail/output_files
 steps:

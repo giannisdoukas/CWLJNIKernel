@@ -40,6 +40,10 @@ class WorkflowComponent(ABC):
     def outputs(self) -> List[Dict]:
         pass
 
+    @abstractmethod
+    def compose_requirements(self) -> Dict:
+        pass
+
     @classmethod
     def _convert_inputs_from_dict_to_list(cls, inputs: Dict) -> List[Dict]:
         return [{'id': id, **cwl_input} for id, cwl_input in inputs.items()]
@@ -84,6 +88,9 @@ class CWLTool(WorkflowComponent):
         to_return.pop('cwlVersion')
         return to_return
 
+    def compose_requirements(self) -> Dict:
+        return {}
+
 
 class CWLWorkflow(WorkflowComponent):
 
@@ -122,6 +129,7 @@ class CWLWorkflow(WorkflowComponent):
             'in': {},
             'out': []
         }
+        self._requirements = {**self._requirements, **component.compose_requirements()}
 
     def remove(self, component: WorkflowComponent) -> None:
         raise NotImplementedError()
@@ -129,6 +137,15 @@ class CWLWorkflow(WorkflowComponent):
     def add_input(self, workflow_input: Dict, step_id: str, in_step_id: str):
         self._inputs.append(workflow_input)
         self._steps[step_id]['in'][in_step_id] = workflow_input['id']
+
+    def add_output_source(self, output_ref: str, type_of: str):
+        references = output_ref.split('/')
+        output_id = references[-1]
+        references = references[:-1]
+        self._outputs.append(
+            {'id': output_id, 'type': type_of, 'outputSource': output_ref}
+        )
+        self._steps[references[0]]['out'].append(output_id)
 
     def to_yaml(self) -> str:
         yaml_text = StringIO()
@@ -164,6 +181,9 @@ class CWLWorkflow(WorkflowComponent):
     @property
     def outputs(self) -> List[Dict]:
         return deepcopy(self._outputs)
+
+    def compose_requirements(self) -> Dict:
+        return {'SubworkflowFeatureRequirement': {}}
 
 
 class WorkflowComponentFactory:

@@ -1,6 +1,6 @@
-cwlVersion: v1.1
+cwlVersion: v1.0
 class: Workflow
-id: scatter-head
+id: scatter_head
 inputs:
   files:
     type: File[]

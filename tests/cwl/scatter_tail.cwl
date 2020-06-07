@@ -1,6 +1,6 @@
-cwlVersion: v1.1
+cwlVersion: v1.0
 class: Workflow
-id: scatter-tail
+id: scatter_tail
 inputs:
   files:
     type: File[]
