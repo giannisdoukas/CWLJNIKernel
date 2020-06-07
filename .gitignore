@@ -147,3 +147,5 @@ workflow-examples/*
 /.python-version
 /tmp
 /html/
+
+.DS_Store

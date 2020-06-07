@@ -1,0 +1,5 @@
+files:
+  - class: File
+    location: ../input_data/data.csv
+  - class: File
+    location: ../input_data/data1.yml
