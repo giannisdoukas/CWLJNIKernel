@@ -8,6 +8,7 @@ from io import StringIO
 from pathlib import Path
 from urllib.parse import urlparse
 
+import pandas as pd
 import requests
 import yaml
 from mockito import when, mock
@@ -677,6 +678,50 @@ query: id""")
             yaml.load(StringIO(cwl_string), yaml.Loader),
             responses[-1][0][2]['data']['application/json']
         )
+
+    def test_display_data_csv(self):
+        kernel = CWLKernel()
+        # cancel send_response
+        responses = []
+        kernel.send_response = lambda *args, **kwargs: responses.append((args, kwargs))
+
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(f"""% display_data_csv no-existing""")
+        )
+        self.assertEqual(
+            'Result not found',
+            responses[-1][0][2]['text']
+        )
+
+        with open(os.sep.join([self.cwl_directory, 'head.cwl'])) as f:
+            head = f.read()
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(head)
+        )
+
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(f"""% execute head 
+headinput:
+    class: File
+    location: {os.sep.join([self.data_directory, 'data.csv'])}
+number_of_lines: 15""")
+        )
+
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute("% display_data_csv headoutput")
+        )
+
+        self.assertListEqual(
+            [-54, -85, -5, 47, 39, 20, -58, 24, 12, 13, 4, -22, -1, -70, 44, -30, 91, -6, 40, -24],
+            list(pd.read_html(responses[-1][0][2]['data']['text/html'], header=None)[0].values[0])
+        )
+
+    def test_sample_csv(self):
+        self.assertTrue(False)
 
 
 if __name__ == '__main__':

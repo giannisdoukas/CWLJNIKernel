@@ -1,3 +1,4 @@
+import json
 from io import StringIO
 
 from ruamel.yaml import YAML
@@ -107,7 +108,7 @@ def display_data(kernel: CWLKernel, data_name: str):
 
 
 @CWLKernel.register_magic
-def display_data_csv(kernel: CWLKernel, data_name):
+def display_data_csv(kernel: CWLKernel, data_name: str):
     import pandas as pd
     if not isinstance(data_name, str) or len(data_name.split()) == 0:
         kernel._send_error_response(
@@ -121,18 +122,17 @@ def display_data_csv(kernel: CWLKernel, data_name):
         return
 
     results = results[0]
-    df = pd.read_csv(results[0])
+    df = pd.read_csv(results[0], header=None)
     kernel.send_response(
         kernel.iopub_socket,
         'display_data',
         {
             'data': {
-                "text/html": f"""{df.to_html()}""",
+                "text/html": f"""{df.to_html(index=False)}""",
                 "text/plain": f"{str(df)}"
             },
             'metadata': {},
         },
-
     )
 
 
@@ -191,7 +191,7 @@ def logs(kernel: CWLKernel, limit=None):
         'display_data',
         {
             'data': {
-                'text/plain': '<IPython.core.display.JSON object>',
+                'text/plain': json.dumps(list(kernel._cwl_logger.load(limit))),
                 'application/json': list(kernel._cwl_logger.load(limit))
             },
             'metadata': {
@@ -244,3 +244,34 @@ def viewTool(kernel: CWLKernel, workflow_id: str):
         kernel._send_json_response(workflow.to_dict())
     else:
         kernel._send_error_response(f"Tool '{workflow_id}' is not registered")
+
+
+@CWLKernel.register_magic
+def sample_csv(kernel: CWLKernel, args: str):
+    data_name, number_of_lines = args.split()
+    number_of_lines = int(number_of_lines)
+    import pandas as pd
+    if not isinstance(data_name, str) or len(data_name.split()) == 0:
+        kernel._send_error_response(
+            'ERROR: you must select an output to display. Correct format:\n % display_data [output name]'
+        )
+        return
+    results = list(
+        filter(lambda item: item[1]['id'] == data_name, kernel._results_manager.get_files_registry().items()))
+    if len(results) != 1:
+        kernel._send_error_response('Result not found')
+        return
+
+    results = results[0]
+    df = pd.read_csv(results[0])
+    kernel.send_response(
+        kernel.iopub_socket,
+        'display_data',
+        {
+            'data': {
+                "text/html": f"""{df.to_html()}""",
+                "text/plain": f"{str(df)}"
+            },
+            'metadata': {},
+        },
+    )
