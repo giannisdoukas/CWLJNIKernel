@@ -93,12 +93,14 @@ def display_data(kernel: CWLKernel, data_name: str):
             'ERROR: you must select an output to display. Correct format:\n % display_data [output name]'
         )
         return
-    results = list(
-        filter(lambda item: item[1]['id'] == data_name, kernel._results_manager.get_files_registry().items()))
-    if len(results) != 1:
+    results = sorted(
+        filter(lambda item: item[1]['id'] == data_name, kernel._results_manager.get_files_registry().items()),
+        key=lambda item: item[1]['result_counter']
+    )
+    if len(results) == 0:
         kernel.send_response(kernel.iopub_socket, 'stream', {'name': 'stderr', 'text': 'Result not found'})
         return
-    results = results[0]
+    results = results[-1]
     with open(results[0]) as f:
         data = f.read()
     kernel.send_response(kernel.iopub_socket, 'stream', {'name': 'stdout', 'text': data})

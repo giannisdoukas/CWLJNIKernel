@@ -154,6 +154,19 @@ class TestCWLKernel(unittest.TestCase):
             responses[-1][0][2]['text']
         )
 
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(data, False)
+        )
+        self.assertEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute('% display_data echo_output')
+        )
+        self.assertEqual(
+            'Hello world!\n',
+            responses[-1][0][2]['text']
+        )
+
     def test_send_invalid_yaml(self):
         from cwlkernel.CWLKernel import CWLKernel
         kernel = CWLKernel()
@@ -315,7 +328,8 @@ class TestCWLKernel(unittest.TestCase):
                              'nameroot': 'hello', 'nameext': '.txt', 'class': 'File',
                              'checksum': 'sha1$2aae6c35c94fcfb415dbe95f408b9ce91ee846ed', 'size': 11,
                              'http://commonwl.org/cwltool#generation': 0,
-                             'id': 'example_out'
+                             'id': 'example_out',
+                             "result_counter": 0
                          }
                      }),
                      'application/json': {
@@ -324,7 +338,8 @@ class TestCWLKernel(unittest.TestCase):
                              'nameroot': 'hello', 'nameext': '.txt', 'class': 'File',
                              'checksum': 'sha1$2aae6c35c94fcfb415dbe95f408b9ce91ee846ed', 'size': 11,
                              'http://commonwl.org/cwltool#generation': 0,
-                             'id': 'example_out'
+                             'id': 'example_out',
+                             "result_counter": 0
                          }
                      }
                  },

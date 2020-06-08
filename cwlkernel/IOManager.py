@@ -19,6 +19,10 @@ class IOFileManager:
         self.ROOT_DIRECTORY = root_directory
         self._files_registry = {}
 
+    @property
+    def files_counter(self):
+        return len(self._files_registry)
+
     def read(self, relative_path: str) -> bytes:
         full_path = os.path.join(self.ROOT_DIRECTORY, relative_path)
 

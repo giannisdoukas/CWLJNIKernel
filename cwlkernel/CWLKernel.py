@@ -171,6 +171,7 @@ class CWLKernel(Kernel):
             if isinstance(results[output], list):
                 for i, output_i in enumerate(results[output]):
                     results[output][i]['id'] = f'{output}_{i + 1}'
+                    results[output][i]['result_counter'] = self._results_manager.files_counter
                     self._results_manager.append_files(
                         [results[output][i]['location']],
                         output_directory_for_that_run,
@@ -178,6 +179,7 @@ class CWLKernel(Kernel):
                     )
             else:
                 results[output]['id'] = output
+                results[output]['result_counter'] = self._results_manager.files_counter
                 self._results_manager.append_files(
                     [results[output]['location']],
                     output_directory_for_that_run,
