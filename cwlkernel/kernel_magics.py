@@ -1,10 +1,26 @@
 import json
+import random
 from io import StringIO
+from typing import Optional
 
 from ruamel.yaml import YAML
 
+from IOManager import IOFileManager
 from .CWLKernel import CWLKernel
 from .cwlrepository.CWLComponent import CWLWorkflow, WorkflowComponent, WorkflowComponentFactory
+
+
+def _get_result_path(results_manager: IOFileManager, result_id: str) -> Optional[str]:
+    """
+    Return the path of the result file or None
+    """
+    results = sorted(
+        filter(lambda item: item[1]['id'] == result_id, results_manager.get_files_registry().items()),
+        key=lambda item: item[1]['result_counter']
+    )
+    if len(results) == 0:
+        return None
+    return results[-1][0]
 
 
 @CWLKernel.register_magic
@@ -94,15 +110,11 @@ def display_data(kernel: CWLKernel, data_name: str):
             'ERROR: you must select an output to display. Correct format:\n % display_data [output name]'
         )
         return
-    results = sorted(
-        filter(lambda item: item[1]['id'] == data_name, kernel._results_manager.get_files_registry().items()),
-        key=lambda item: item[1]['result_counter']
-    )
-    if len(results) == 0:
+    result = _get_result_path(kernel._results_manager, data_name)
+    if result is None:
         kernel.send_response(kernel.iopub_socket, 'stream', {'name': 'stderr', 'text': 'Result not found'})
         return
-    results = results[-1]
-    with open(results[0]) as f:
+    with open(result) as f:
         data = f.read()
     kernel.send_response(kernel.iopub_socket, 'stream', {'name': 'stdout', 'text': data})
 
@@ -112,17 +124,15 @@ def display_data_csv(kernel: CWLKernel, data_name: str):
     import pandas as pd
     if not isinstance(data_name, str) or len(data_name.split()) == 0:
         kernel._send_error_response(
-            'ERROR: you must select an output to display. Correct format:\n % display_data [output name]'
+            'ERROR: you must select an output to display. Correct format:\n % display_data_csv [output name]'
         )
         return
-    results = list(
-        filter(lambda item: item[1]['id'] == data_name, kernel._results_manager.get_files_registry().items()))
-    if len(results) != 1:
+    result = _get_result_path(kernel._results_manager, data_name)
+    if result is None:
         kernel._send_error_response('Result not found')
         return
 
-    results = results[0]
-    df = pd.read_csv(results[0], header=None)
+    df = pd.read_csv(result, header=None)
     kernel.send_response(
         kernel.iopub_socket,
         'display_data',
@@ -137,32 +147,61 @@ def display_data_csv(kernel: CWLKernel, data_name: str):
 
 
 @CWLKernel.register_magic
-def display_data_image(kernel: CWLKernel, data_name):
+def sample_csv(kernel: CWLKernel, args: str):
+    import pandas as pd
+    try:
+        data_name, sample_percent = args.split()
+        sample_percent = float(sample_percent)
+    except Exception:
+        kernel._send_error_response(
+            'ERROR: you must select an output to display. Correct format:\n '
+            '% sample_csv [output name] [percent size (0.5)]'
+        )
+        return
+    result = _get_result_path(kernel._results_manager, data_name)
+    if result is None:
+        kernel._send_error_response('Result not found')
+        return
+
+    df = pd.read_csv(result, header=None, skiprows=lambda i: i > 0 and random.random() > sample_percent)
+    kernel.send_response(
+        kernel.iopub_socket,
+        'display_data',
+        {
+            'data': {
+                "text/html": f"""{df.to_html(index=False)}""",
+                "text/plain": f"{str(df)}"
+            },
+            'metadata': {},
+        },
+    )
+
+
+@CWLKernel.register_magic
+def display_data_image(kernel: CWLKernel, data_name: str):
     import base64
     if not isinstance(data_name, str) or len(data_name.split()) == 0:
         kernel._send_error_response(
             'ERROR: you must select an output to display. Correct format:\n % display_data [output name]'
         )
         return
-    results = list(
-        filter(lambda item: item[1]['id'] == data_name, kernel._results_manager.get_files_registry().items()))
-    if len(results) != 1:
+    result = _get_result_path(kernel._results_manager, data_name)
+    if result is None:
         kernel._send_error_response('Result not found')
         return
 
-    results = results[0]
-    kernel.log.debug(results)
-    with open(results[0], 'rb') as f:
+    kernel.log.debug(result)
+    with open(result, 'rb') as f:
         image = base64.b64encode(f.read()).decode()
-    if results[0].endswith('.png'):
+    if result.endswith('.png'):
         mime = 'image/png'
-    elif results[0].endswith('.jpg') or results[0].endswith('.jpeg'):
+    elif result.endswith('.jpg') or result.endswith('.jpeg'):
         mime = 'image/jpeg'
-    elif results[0].endswith('.svg'):
+    elif result.endswith('.svg'):
         mime = 'image/svg+xml'
     else:
-        raise ValueError(f'unsupported type {results[0]}')
-    image = f"""<image src="data:{mime}; base64, {image}" alt="{results[0]}">"""
+        raise ValueError(f'unsupported type {result}')
+    image = f"""<image src="data:{mime}; base64, {image}" alt="{result}">"""
     kernel.send_response(
         kernel.iopub_socket,
         'display_data',
@@ -244,34 +283,3 @@ def viewTool(kernel: CWLKernel, workflow_id: str):
         kernel._send_json_response(workflow.to_dict())
     else:
         kernel._send_error_response(f"Tool '{workflow_id}' is not registered")
-
-
-@CWLKernel.register_magic
-def sample_csv(kernel: CWLKernel, args: str):
-    data_name, number_of_lines = args.split()
-    number_of_lines = int(number_of_lines)
-    import pandas as pd
-    if not isinstance(data_name, str) or len(data_name.split()) == 0:
-        kernel._send_error_response(
-            'ERROR: you must select an output to display. Correct format:\n % display_data [output name]'
-        )
-        return
-    results = list(
-        filter(lambda item: item[1]['id'] == data_name, kernel._results_manager.get_files_registry().items()))
-    if len(results) != 1:
-        kernel._send_error_response('Result not found')
-        return
-
-    results = results[0]
-    df = pd.read_csv(results[0])
-    kernel.send_response(
-        kernel.iopub_socket,
-        'display_data',
-        {
-            'data': {
-                "text/html": f"""{df.to_html()}""",
-                "text/plain": f"{str(df)}"
-            },
-            'metadata': {},
-        },
-    )

@@ -721,7 +721,45 @@ number_of_lines: 15""")
         )
 
     def test_sample_csv(self):
-        self.assertTrue(False)
+        kernel = CWLKernel()
+        # cancel send_response
+        responses = []
+        kernel.send_response = lambda *args, **kwargs: responses.append((args, kwargs))
+
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(f"""% display_data_csv no-existing""")
+        )
+        self.assertEqual(
+            'Result not found',
+            responses[-1][0][2]['text']
+        )
+
+        with open(os.sep.join([self.cwl_directory, 'head.cwl'])) as f:
+            head = f.read()
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(head)
+        )
+
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(f"""% execute head 
+        headinput:
+            class: File
+            location: {os.sep.join([self.data_directory, 'data.csv'])}
+        number_of_lines: 15""")
+        )
+
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute("% sample_csv headoutput 0.2")
+        )
+
+        shape = pd.read_html(responses[-1][0][2]['data']['text/html'], header=None)[0].shape
+        print('shape:', shape)
+        self.assertAlmostEqual(shape[0], 4, delta=2)
+        self.assertEqual(shape[1], 20)
 
 
 if __name__ == '__main__':
