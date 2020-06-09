@@ -758,7 +758,7 @@ number_of_lines: 15""")
 
         shape = pd.read_html(responses[-1][0][2]['data']['text/html'], header=None)[0].shape
         print('shape:', shape)
-        self.assertAlmostEqual(shape[0], 4, delta=2)
+        self.assertAlmostEqual(shape[0], 4, delta=3)
         self.assertEqual(shape[1], 20)
 
 
