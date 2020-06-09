@@ -67,7 +67,6 @@ for i, r in enumerate(req):
         egg_position = r.rfind("#egg=")
         dependency_name = r[egg_position+5:]
         req[i] = f"{dependency_name} @ {r[:egg_position]}"
-print('\n'.join(req))
 setup(
     name=name,
     version=get_version(f"{name}/__init__.py"),
