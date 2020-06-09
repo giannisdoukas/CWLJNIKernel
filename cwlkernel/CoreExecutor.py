@@ -1,8 +1,8 @@
 import os
-import subprocess
 import sys
 import traceback
 from pathlib import Path
+from subprocess import DEVNULL
 from typing import (
     Dict,
     List,
@@ -46,9 +46,9 @@ class CoreExecutor:
         runtime_context = RuntimeContext()
         runtime_context.outdir = self.file_manager.ROOT_DIRECTORY
         runtime_context.basedir = self.file_manager.ROOT_DIRECTORY
-        runtime_context.default_stdin = subprocess.DEVNULL
-        runtime_context.default_stdout = subprocess.DEVNULL
-        runtime_context.default_stderr = subprocess.DEVNULL
+        runtime_context.default_stdin = DEVNULL
+        runtime_context.default_stdout = DEVNULL
+        runtime_context.default_stderr = DEVNULL
         os.chdir(self.file_manager.ROOT_DIRECTORY)
         factory = Factory(runtime_context=runtime_context)
         executable = factory.make(self._workflow_path)

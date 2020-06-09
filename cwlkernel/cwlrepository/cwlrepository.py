@@ -28,9 +28,9 @@ class WorkflowRepository(Iterable):
                 raise TypeError(f'WorkflowComponent expected but type of {type(tool)} given')
             if not isinstance(tool.id, str):
                 raise MissingIdError('Missing WorkflowComponent\'s id')
-            for input in tool.inputs:
-                if 'id' not in input:
-                    raise MissingIdError(f'Missing id for input: {input}')
+            for tool_input in tool.inputs:
+                if 'id' not in tool_input:
+                    raise MissingIdError(f'Missing id for input: {tool_input}')
             for output in tool.outputs:
                 if 'id' not in output:
                     raise MissingIdError(f'Missing id for outputs: {output}')

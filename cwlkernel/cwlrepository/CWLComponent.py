@@ -118,11 +118,6 @@ class CWLWorkflow(WorkflowComponent):
                 steps[step]['run'] = f"{steps[step]['run']._id}.cwl"
         return deepcopy(steps)
 
-    """
-    A composite object can add or remove other components (both simple or
-    complex) to or from its child list.
-    """
-
     def add(self, component: WorkflowComponent, step_name: str) -> None:
         self._steps[step_name] = {
             'run': component,
@@ -188,7 +183,7 @@ class CWLWorkflow(WorkflowComponent):
 
 class WorkflowComponentFactory:
     def get_workflow_component(self, yaml_string: str) -> WorkflowComponent:
-        component = yaml.load(StringIO(yaml_string), yaml.SafeLoader)
+        component = yaml.safe_load(StringIO(yaml_string))
         if 'id' not in component:
             component['id'] = str(uuid.uuid4())
         if component['class'] == 'CommandLineTool':

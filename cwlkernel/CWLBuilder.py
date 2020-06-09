@@ -32,7 +32,7 @@ class CWLSnippetBuilder(CWLBuilder):
         return self._code
 
     def build(self) -> WorkflowComponent:
-        code = yaml.load(StringIO(self._code), yaml.Loader)
+        code = yaml.safe_load(StringIO(self._code))
         if 'id' not in code:
             raise ValueError("the workflow must contain an id")
         if code['class'] == 'CommandLineTool':
