@@ -122,6 +122,34 @@ class TestCWLKernel(unittest.TestCase):
             kernel.do_execute(data)
         )
 
+    def test_data_magic_command(self):
+        from cwlkernel.CWLKernel import CWLKernel
+        kernel = CWLKernel()
+        # monitor responses
+        responses = []
+        kernel.send_response = lambda *args, **kwargs: responses.append((args, kwargs))
+
+        with open(os.sep.join([self.cwl_directory, 'echo_stdout.cwl'])) as f:
+            workflow_str = f.read()
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(workflow_str, False)
+        )
+
+        with open(os.sep.join([self.data_directory, 'echo-job.yml'])) as f:
+            data = f"% execute echo\n{f.read()}"
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(data, False)
+        )
+
+        from lxml import etree
+        kernel.do_execute('% data')
+        self.assertEqual(
+            1,
+            len(etree.HTML(responses[-1][0][2]['data']['text/html']).xpath('//a'))
+        )
+
     def test_display_data_magic_command(self):
         from cwlkernel.CWLKernel import CWLKernel
         kernel = CWLKernel()
