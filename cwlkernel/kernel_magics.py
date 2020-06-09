@@ -5,8 +5,8 @@ from typing import Optional
 
 from ruamel.yaml import YAML
 
-from IOManager import IOFileManager
 from .CWLKernel import CWLKernel
+from .IOManager import IOFileManager
 from .cwlrepository.CWLComponent import CWLWorkflow, WorkflowComponent, WorkflowComponentFactory
 
 
