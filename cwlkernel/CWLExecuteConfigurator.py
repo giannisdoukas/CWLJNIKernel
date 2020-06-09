@@ -1,5 +1,5 @@
-from typing import Dict, Tuple, Callable
 import os
+from typing import Dict, Tuple, Callable
 
 
 # TODO: use tempfile for windows compatibility
@@ -15,6 +15,7 @@ class CWLExecuteConfigurator:
     }
 
     def __init__(self):
+        """kernel configurations"""
         for property, (default_value, validator) in self.properties.items():
             value = os.environ.get(property, default_value)
             if not validator(value):

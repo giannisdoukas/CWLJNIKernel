@@ -58,13 +58,14 @@ class WorkflowRepository(Iterable):
             self._registry = {}
             self._file_repository.clear()
 
-        def get_tools_path_by_id(self, id: str) -> Optional[Path]:
-            comp = self._registry.get(id, None)
+        def get_tools_path_by_id(self, tool_id: str) -> Optional[Path]:
+            comp = self._registry.get(tool_id, None)
             return comp[1] if comp is not None else None
 
     __repo__: __SingletonWorkflowRepository__ = None
 
     def __init__(self, directory: Path):
+        """Initialize the singleton repository object if not exists."""
         if WorkflowRepository.__repo__ is None:
             WorkflowRepository.__repo__ = WorkflowRepository.__SingletonWorkflowRepository__(directory)
 
