@@ -23,7 +23,8 @@ logger = logging.Logger('CWLKernel')
 
 
 class CWLKernel(Kernel):
-    """Jupyter Notebook kernel for CWL"""
+
+    """Jupyter Notebook kernel for CWL."""
     implementation = 'CWLKernel'
     implementation_version = '0.1'
     language_version = '1.0'
@@ -196,9 +197,7 @@ class CWLKernel(Kernel):
         return 'cwlVersion' in code.keys()
 
     def get_pid(self) -> Tuple[int, int]:
-        """
-        :return: The process id and his parents id
-        """
+        """:return: The process id and his parents id."""
         return self._pid
 
 

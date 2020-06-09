@@ -16,7 +16,7 @@ class CWLSnippetBuilder(CWLBuilder):
     _code: str
 
     def __init__(self):
-        """Initialize a snippet builder with an empty code"""
+        """Initialize a snippet builder with an empty code."""
         self._code = ""
 
     def append(self, code: str, indent: int = 0) -> None:
