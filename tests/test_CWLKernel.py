@@ -477,6 +477,7 @@ id: inputfile
 type: File
 % newWorkflowAddStepIn tailstepid headstepid headoutput
 tailinput: headstepid/headoutput
+% newWorkflowAddOutputSource tailstepid/tailoutput File
 % newWorkflowBuild""")
         )
 
@@ -486,7 +487,7 @@ tailinput: headstepid/headoutput
                 "class": "Workflow",
                 "id": "main",
                 "inputs": [{'id': 'inputfile', 'type': 'File'}],
-                "outputs": [],
+                "outputs": [{'id': 'tailoutput', 'type': 'File', 'outputSource': "tailstepid/tailoutput"}],
                 "steps": {
                     "headstepid":
                         {
@@ -498,7 +499,7 @@ tailinput: headstepid/headoutput
                         {
                             "run": "tail.cwl",
                             "in": {"tailinput": "headstepid/headoutput"},
-                            "out": []
+                            "out": ['tailoutput']
                         },
                 },
                 'requirements': {}

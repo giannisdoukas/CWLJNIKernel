@@ -42,9 +42,9 @@ class WorkflowRepository(Iterable):
             path = Path(self._file_repository.write(f'{tool.id}.cwl', tool.to_yaml().encode()))
             self._registry[tool.id] = (deepcopy(tool), path)
 
-        def register_tools(self, *args):
-            for tool in args:
-                self.register_tool(tool)
+        # def register_tools(self, *args):
+        #     for tool in args:
+        #         self.register_tool(tool)
 
         def get_by_id(self, tool_id: str) -> Optional[WorkflowComponent]:
             comp = self._registry.get(tool_id, None)

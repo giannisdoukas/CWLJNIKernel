@@ -1,9 +1,7 @@
-import tempfile
 import unittest
-from pathlib import Path
+from io import StringIO
 
 import yaml
-from io import StringIO
 
 from cwlkernel.CWLBuilder import CWLSnippetBuilder
 
@@ -89,4 +87,31 @@ outputs: []""",
         self.assertDictEqual(
             yaml.load(StringIO(cwl_builder.get_current_code()), yaml.Loader),
             yaml.load(StringIO(cwl_workflow.to_yaml()), yaml.Loader)
+        )
+
+    def test_build_without_id(self):
+        cwl_builder = CWLSnippetBuilder()
+        cwl_builder.append("""cwlVersion: v1.0
+class: CommandLineTool
+baseCommand: echo
+inputs:
+- id: message
+  inputBinding:
+    position: 1
+  type: string
+outputs: []""")
+        with self.assertRaises(ValueError):
+            cwl_builder.build()
+        cwl_builder.append("id: echo")
+        cwl_tool = cwl_builder.build()
+        self.assertDictEqual(
+            {'cwlVersion': 'v1.0',
+             'class': 'CommandLineTool',
+             'baseCommand': 'echo',
+             'id': 'echo',
+             'inputs': [{'id': 'message',
+                         'inputBinding': {'position': 1},
+                         'type': 'string'}],
+             'outputs': []},
+            cwl_tool.to_dict()
         )
