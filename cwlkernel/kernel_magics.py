@@ -11,9 +11,7 @@ from .cwlrepository.CWLComponent import CWLWorkflow, WorkflowComponent, Workflow
 
 
 def _get_result_path(results_manager: IOFileManager, result_id: str) -> Optional[str]:
-    """
-    Return the path of the result file or None
-    """
+    """Return the path of the result file or None"""
     results = sorted(
         filter(lambda item: item[1]['id'] == result_id, results_manager.get_files_registry().items()),
         key=lambda item: item[1]['result_counter']
@@ -36,7 +34,7 @@ def newWorkflowAddInput(kernel: CWLKernel, args: str):
     args = args.splitlines()
     step_id, step_in_id = args[0].split()
     input_description = '\n'.join(args[1:])
-    input_description = y.load(StringIO(input_description), y.Loader)
+    input_description = y.safe_load(StringIO(input_description))
     kernel._workflow_composer.add_input(
         workflow_input=input_description,
         step_id=step_id.strip(),
@@ -49,7 +47,7 @@ def newWorkflowAddStepIn(kernel: CWLKernel, args: str):
     step_in_args = args[0].split()
     input_description = '\n'.join(args[1:])
     import yaml as y
-    input_description = y.load(StringIO(input_description), y.Loader)
+    input_description = y.safe_load(StringIO(input_description))
     for input_id, description in input_description.items():
         kernel._workflow_composer.add_step_in_out(description, input_id, *step_in_args)
 
@@ -68,8 +66,8 @@ def newWorkflowAddOutputSource(kernel: CWLKernel, args: str):
 
 
 @CWLKernel.register_magic
-def newWorkflow(kernel: CWLKernel, id: str):
-    kernel._workflow_composer = CWLWorkflow(id)
+def newWorkflow(kernel: CWLKernel, workflow_id: str):
+    kernel._workflow_composer = CWLWorkflow(workflow_id)
 
 
 @CWLKernel.register_magic
