@@ -1,7 +1,9 @@
 from abc import ABC, abstractmethod
-import yaml
-from cwlkernel.cwlrepository.CWLComponent import WorkflowComponent, CWLTool, CWLWorkflow
 from io import StringIO
+
+import yaml
+
+from cwlkernel.cwlrepository.CWLComponent import WorkflowComponent, CWLTool, CWLWorkflow
 
 
 class CWLBuilder(ABC):
@@ -14,6 +16,7 @@ class CWLSnippetBuilder(CWLBuilder):
     _code: str
 
     def __init__(self):
+        """Initialize a snippet builder with an empty code."""
         self._code = ""
 
     def append(self, code: str, indent: int = 0) -> None:
@@ -29,7 +32,7 @@ class CWLSnippetBuilder(CWLBuilder):
         return self._code
 
     def build(self) -> WorkflowComponent:
-        code = yaml.load(StringIO(self._code), yaml.Loader)
+        code = yaml.safe_load(StringIO(self._code))
         if 'id' not in code:
             raise ValueError("the workflow must contain an id")
         if code['class'] == 'CommandLineTool':

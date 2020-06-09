@@ -3,6 +3,7 @@
 [![Build Status](https://travis-ci.com/giannisdoukas/CWLJNIKernel.svg)](https://travis-ci.com/giannisdoukas/CWLJNIKernel)
 [![Coverage Status](https://coveralls.io/repos/github/giannisdoukas/CWLJNIKernel/badge.svg?t=AHSikx)](https://coveralls.io/github/giannisdoukas/CWLJNIKernel)
 [![Gitter chat](https://badges.gitter.im/CWLJNIKernel/gitter.png)](https://gitter.im/CWLJNIKernel/community)
+[![Documentation Status](https://readthedocs.org/projects/cwljnikernel/badge/?version=latest)](https://cwljnikernel.readthedocs.io/en/latest/?badge=latest)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/6c7585bdf708450d92d97c9e1add4633)](https://www.codacy.com/manual/giannisdoukas/CWLJNIKernel?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=giannisdoukas/CWLJNIKernel&amp;utm_campaign=Badge_Grade)
 
 This is a jupyter notebook kernel which enables running Common Workflow Language. It uses 

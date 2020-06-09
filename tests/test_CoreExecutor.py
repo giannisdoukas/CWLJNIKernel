@@ -1,7 +1,6 @@
 import os
 import tempfile
 import unittest
-import io
 from pathlib import Path
 
 from cwlkernel.CoreExecutor import CoreExecutor
@@ -24,9 +23,8 @@ class TestCoreExecutor(unittest.TestCase):
         # That tests fails only when is called through PyCharm
         file_manager = IOFileManager(self.kernel_root_directory)
         executor = CoreExecutor(file_manager)
-        with open(os.sep.join([self.cwl_directory, 'essential_input.cwl'])) as f:
-            workflow_str = f.read()
-        executor.set_workflow(workflow_str)
+        workflow_path = os.sep.join([self.cwl_directory, 'essential_input.cwl'])
+        executor.set_workflow_path(workflow_path)
         with open(os.sep.join([self.data_directory, 'essential_input_data1.yml'])) as f:
             data_str = f.read()
         executor.set_data([data_str])

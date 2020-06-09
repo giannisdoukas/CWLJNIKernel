@@ -1,13 +1,18 @@
-import tarfile
-
+import json
 import logging
 import os
+import tarfile
 import tempfile
 import unittest
-import yaml
 from io import StringIO
-from ruamel.yaml import YAML
+from pathlib import Path
 from urllib.parse import urlparse
+
+import pandas as pd
+import requests
+import yaml
+from mockito import when, mock
+from ruamel.yaml import YAML
 
 from cwlkernel.CWLKernel import CWLKernel
 from cwlkernel.cwlrepository.cwlrepository import WorkflowRepository
@@ -26,7 +31,9 @@ class TestCWLKernel(unittest.TestCase):
         return kernel
 
     def setUp(self) -> None:
-        WorkflowRepository().delete()
+        import tempfile
+        WorkflowRepository(Path(tempfile.mkdtemp()))
+        WorkflowRepository.get_instance().delete()
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -115,6 +122,34 @@ class TestCWLKernel(unittest.TestCase):
             kernel.do_execute(data)
         )
 
+    def test_data_magic_command(self):
+        from cwlkernel.CWLKernel import CWLKernel
+        kernel = CWLKernel()
+        # monitor responses
+        responses = []
+        kernel.send_response = lambda *args, **kwargs: responses.append((args, kwargs))
+
+        with open(os.sep.join([self.cwl_directory, 'echo_stdout.cwl'])) as f:
+            workflow_str = f.read()
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(workflow_str, False)
+        )
+
+        with open(os.sep.join([self.data_directory, 'echo-job.yml'])) as f:
+            data = f"% execute echo\n{f.read()}"
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(data, False)
+        )
+
+        from lxml import etree
+        kernel.do_execute('% data')
+        self.assertEqual(
+            1,
+            len(etree.HTML(responses[-1][0][2]['data']['text/html']).xpath('//a'))
+        )
+
     def test_display_data_magic_command(self):
         from cwlkernel.CWLKernel import CWLKernel
         kernel = CWLKernel()
@@ -148,6 +183,19 @@ class TestCWLKernel(unittest.TestCase):
             responses[-1][0][2]['text']
         )
 
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(data, False)
+        )
+        self.assertEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute('% display_data echo_output')
+        )
+        self.assertEqual(
+            'Hello world!\n',
+            responses[-1][0][2]['text']
+        )
+
     def test_send_invalid_yaml(self):
         from cwlkernel.CWLKernel import CWLKernel
         kernel = CWLKernel()
@@ -169,7 +217,7 @@ class TestCWLKernel(unittest.TestCase):
             'user_expressions': {},
         }, exec_result)
 
-    def test_history_magic_command(self):
+    def test_logs_magic_command(self):
         from cwlkernel.CWLKernel import CWLKernel
         kernel = CWLKernel()
         # cancel send_response
@@ -181,8 +229,13 @@ class TestCWLKernel(unittest.TestCase):
             {"status": "ok", "execution_count": 0, 'payload': [], 'user_expressions': {}},
             exec_response
         )
+        exec_response = kernel.do_execute('% logs')
+        self.assertDictEqual(
+            {"status": "ok", "execution_count": 0, 'payload': [], 'user_expressions': {}},
+            exec_response
+        )
         number_of_responses = len(responses)
-        self.assertGreater(number_of_responses, 1)
+        self.assertEqual(number_of_responses, 2)
         exec_response = kernel.do_execute('% logs 1')
         self.assertDictEqual(
             {"status": "ok", "execution_count": 0, 'payload': [], 'user_expressions': {}},
@@ -239,13 +292,12 @@ class TestCWLKernel(unittest.TestCase):
         with open(os.sep.join([self.cwl_directory, 'without_id.cwl'])) as f:
             workflow_str = f.read()
         self.assertDictEqual(
-            {'status': 'error', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
             kernel.do_execute(workflow_str)
         )
-        self.assertTupleEqual(
-            ((None, 'stream', {'name': 'stderr', 'text': "ValueError: cwl must contains an id"}),
-             {}),
-            responses[-1]
+        self.assertRegex(
+            responses[-1][0][2]['text'],
+            r"^tool '[a-zA-Z0-9-]+' registered"
         )
 
         with open(os.sep.join([self.cwl_directory, 'echo.cwl'])) as f:
@@ -263,11 +315,8 @@ class TestCWLKernel(unittest.TestCase):
 
     def test_all_magic_commands_have_methods(self):
         kernel = CWLKernel()
-        for magic in kernel._magic_commands:
-            try:
-                kernel.__getattribute__(f'_execute_magic_{magic}')
-            except AttributeError as e:
-                self.fail(f'Missing function for magic command: {magic}. \nAttribute error raises: {e}')
+        for magic_name, magic_function in kernel._magic_commands.items():
+            hasattr(magic_function, '__call__')
 
     def test_display_json_output_after_execution(self):
         from cwlkernel.CWLKernel import CWLKernel
@@ -302,14 +351,24 @@ class TestCWLKernel(unittest.TestCase):
             (None, 'display_data',
              {
                  'data': {
-                     'text/plain': '<IPython.core.display.JSON object>',
+                     'text/plain': json.dumps({
+                         'example_out': {
+                             'location': f'file://{tar_directory}/hello.txt', 'basename': 'hello.txt',
+                             'nameroot': 'hello', 'nameext': '.txt', 'class': 'File',
+                             'checksum': 'sha1$2aae6c35c94fcfb415dbe95f408b9ce91ee846ed', 'size': 11,
+                             'http://commonwl.org/cwltool#generation': 0,
+                             'id': 'example_out',
+                             "result_counter": 0
+                         }
+                     }),
                      'application/json': {
                          'example_out': {
                              'location': f'file://{tar_directory}/hello.txt', 'basename': 'hello.txt',
                              'nameroot': 'hello', 'nameext': '.txt', 'class': 'File',
                              'checksum': 'sha1$2aae6c35c94fcfb415dbe95f408b9ce91ee846ed', 'size': 11,
                              'http://commonwl.org/cwltool#generation': 0,
-                             'id': 'example_out'
+                             'id': 'example_out',
+                             "result_counter": 0
                          }
                      }
                  },
@@ -343,7 +402,6 @@ class TestCWLKernel(unittest.TestCase):
         )
 
     def test_execute_multiple_steps(self):
-        from cwlkernel.CWLKernel import CWLKernel
         kernel = CWLKernel()
         # cancel send_response
         responses = []
@@ -420,7 +478,6 @@ number_of_lines: 5
         )
 
     def test_compose(self):
-        from cwlkernel.CWLKernel import CWLKernel
         kernel = CWLKernel()
         # cancel send_response
         responses = []
@@ -448,6 +505,7 @@ id: inputfile
 type: File
 % newWorkflowAddStepIn tailstepid headstepid headoutput
 tailinput: headstepid/headoutput
+% newWorkflowAddOutputSource tailstepid/tailoutput File
 % newWorkflowBuild""")
         )
 
@@ -457,19 +515,19 @@ tailinput: headstepid/headoutput
                 "class": "Workflow",
                 "id": "main",
                 "inputs": [{'id': 'inputfile', 'type': 'File'}],
-                "outputs": [],
+                "outputs": [{'id': 'tailoutput', 'type': 'File', 'outputSource': "tailstepid/tailoutput"}],
                 "steps": {
                     "headstepid":
                         {
-                            "run": "head",
+                            "run": "head.cwl",
                             "in": {"headinput": "inputfile"},
                             "out": ['headoutput']
                         },
                     "tailstepid":
                         {
-                            "run": "tail",
+                            "run": "tail.cwl",
                             "in": {"tailinput": "headstepid/headoutput"},
-                            "out": []
+                            "out": ['tailoutput']
                         },
                 },
                 'requirements': {}
@@ -484,6 +542,253 @@ inputfile:
     class: File
     location: {os.path.join(self.data_directory, "data.csv")}""")
         )
+
+    def test_githubImport(self):
+        when(requests) \
+            .get("https://api.github.com/repos/giannisdoukas/CWLJNIKernel/contents/tests/cwl/head.cwl?ref=dev") \
+            .thenReturn(mock({
+            'status_code': 200,
+            'json': lambda: {
+                "name": "head.cwl",
+                "path": "tests/cwl/head.cwl",
+                "sha": "74e6680835a37ecc696279bd84495a4ec370c732",
+                "size": 316,
+                "url": "https://api.github.com/repos/giannisdoukas/CWLJNIKernel/contents/tests/cwl/head.cwl?ref=dev",
+                "html_url": "https://github.com/giannisdoukas/CWLJNIKernel/blob/dev/tests/cwl/head.cwl",
+                "git_url": "https://api.github.com/repos/giannisdoukas/CWLJNIKernel/git/blobs/74e6680835a37ecc696279bd84495a4ec370c732",
+                "download_url": "https://raw.githubusercontent.com/giannisdoukas/CWLJNIKernel/dev/tests/cwl/head.cwl",
+                "type": "file",
+                "content": "Y2xhc3M6IENvbW1hbmRMaW5lVG9vbApjd2xWZXJzaW9uOiB2MS4wCmlkOiBo\nZWFkCmJhc2VDb21tYW5kOgogIC0gaGVhZAppbnB1dHM6CiAgLSBpZDogbnVt\nYmVyX29mX2xpbmVzCiAgICB0eXBlOiBpbnQ/CiAgICBpbnB1dEJpbmRpbmc6\nCiAgICAgIHBvc2l0aW9uOiAwCiAgICAgIHByZWZpeDogJy1uJwogIC0gaWQ6\nIGhlYWRpbnB1dAogICAgdHlwZTogRmlsZQogICAgaW5wdXRCaW5kaW5nOgog\nICAgICBwb3NpdGlvbjogMQpvdXRwdXRzOgogIC0gaWQ6IGhlYWRvdXRwdXQK\nICAgIHR5cGU6IHN0ZG91dApsYWJlbDogaGVhZApzdGRvdXQ6IGhlYWQub3V0\nCg==\n",
+                "encoding": "base64",
+                "_links": {
+                    "self": "https://api.github.com/repos/giannisdoukas/CWLJNIKernel/contents/tests/cwl/head.cwl?ref=dev",
+                    "git": "https://api.github.com/repos/giannisdoukas/CWLJNIKernel/git/blobs/74e6680835a37ecc696279bd84495a4ec370c732",
+                    "html": "https://github.com/giannisdoukas/CWLJNIKernel/blob/dev/tests/cwl/head.cwl"
+                }
+            }
+        }))
+        when(requests) \
+            .get("https://api.github.com/repos/giannisdoukas/CWLJNIKernel/contents/tests/cwl/3stepWorkflow.cwl?ref=dev") \
+            .thenReturn(mock(
+            {
+                'status_code': 200,
+                'json': lambda: {
+                    "name": "3stepWorkflow.cwl",
+                    "path": "tests/cwl/3stepWorkflow.cwl",
+                    "sha": "681de5be2005ab7258c33328140b33e0c42b891f",
+                    "size": 810,
+                    "url": "https://api.github.com/repos/giannisdoukas/CWLJNIKernel/contents/tests/cwl/3stepWorkflow.cwl?ref=dev",
+                    "html_url": "https://github.com/giannisdoukas/CWLJNIKernel/blob/dev/tests/cwl/3stepWorkflow.cwl",
+                    "git_url": "https://api.github.com/repos/giannisdoukas/CWLJNIKernel/git/blobs/681de5be2005ab7258c33328140b33e0c42b891f",
+                    "download_url": "https://raw.githubusercontent.com/giannisdoukas/CWLJNIKernel/dev/tests/cwl/3stepWorkflow.cwl",
+                    "type": "file",
+                    "content": "IyEvdXNyL2Jpbi9lbnYgY3dsdG9vbApjd2xWZXJzaW9uOiB2MS4wCmNsYXNz\nOiBXb3JrZmxvdwppZDogdGhyZWVzdGVwcwppbnB1dHM6CiAgLSBpZDogaW5w\ndXRmaWxlCiAgICB0eXBlOiBGaWxlCiAgLSBpZDogcXVlcnkKICAgIHR5cGU6\nIHN0cmluZwpvdXRwdXRzOgogIG91dHB1dGZpbGU6CiAgICB0eXBlOiBGaWxl\nCiAgICBvdXRwdXRTb3VyY2U6IGdyZXAyL2dyZXBvdXRwdXQKICBvdXRwdXRm\naWxlMjoKICAgIHR5cGU6IEZpbGUKICAgIG91dHB1dFNvdXJjZTogZ3JlcHN0\nZXAvZ3JlcG91dHB1dAoKc3RlcHM6CiAgaGVhZDoKICAgIHJ1bjogaGVhZC5j\nd2wKICAgIGluOgogICAgICBoZWFkaW5wdXQ6IGlucHV0ZmlsZQogICAgb3V0\nOiBbaGVhZG91dHB1dF0KCiAgZ3JlcHN0ZXA6CiAgICBydW46IGdyZXAuY3ds\nCiAgICBpbjoKICAgICAgZ3JlcGlucHV0OiBoZWFkL2hlYWRvdXRwdXQKICAg\nICAgcXVlcnk6IHF1ZXJ5CiAgICAgIGxpbmVzX2JlbGxvdzoKICAgICAgICB2\nYWx1ZUZyb206ICR7cmV0dXJuIDU7fQogICAgb3V0OiBbZ3JlcG91dHB1dF0K\nICBncmVwMjoKICAgIHJ1bjogZ3JlcC5jd2wKICAgIGluOgogICAgICBncmVw\naW5wdXQ6IGdyZXBzdGVwL2dyZXBvdXRwdXQKICAgICAgcXVlcnk6CiAgICAg\nICAgdmFsdWVGcm9tOiAncXVlcnknCiAgICAgIGxpbmVzX2Fib3ZlOgogICAg\nICAgIHZhbHVlRnJvbTogJHtyZXR1cm4gNTt9CiAgICBvdXQ6IFtncmVwb3V0\ncHV0XQpyZXF1aXJlbWVudHM6CiAgU3RlcElucHV0RXhwcmVzc2lvblJlcXVp\ncmVtZW50OiB7fQogIElubGluZUphdmFzY3JpcHRSZXF1aXJlbWVudDoge30K\n",
+                    "encoding": "base64",
+                    "_links": {
+                        "self": "https://api.github.com/repos/giannisdoukas/CWLJNIKernel/contents/tests/cwl/3stepWorkflow.cwl?ref=dev",
+                        "git": "https://api.github.com/repos/giannisdoukas/CWLJNIKernel/git/blobs/681de5be2005ab7258c33328140b33e0c42b891f",
+                        "html": "https://github.com/giannisdoukas/CWLJNIKernel/blob/dev/tests/cwl/3stepWorkflow.cwl"
+                    }
+                }
+            }))
+        when(requests) \
+            .get("https://api.github.com/repos/giannisdoukas/CWLJNIKernel/contents/tests/cwl/grep.cwl?ref=dev") \
+            .thenReturn(mock(
+            {
+                'status_code': 200,
+                'json': lambda: {
+                    "name": "grep.cwl",
+                    "path": "tests/cwl/grep.cwl",
+                    "sha": "a0ce6c241f90eafd0b4c489a1880368f2ceca1d9",
+                    "size": 476,
+                    "url": "https://api.github.com/repos/giannisdoukas/CWLJNIKernel/contents/tests/cwl/grep.cwl?ref=dev",
+                    "html_url": "https://github.com/giannisdoukas/CWLJNIKernel/blob/dev/tests/cwl/grep.cwl",
+                    "git_url": "https://api.github.com/repos/giannisdoukas/CWLJNIKernel/git/blobs/a0ce6c241f90eafd0b4c489a1880368f2ceca1d9",
+                    "download_url": "https://raw.githubusercontent.com/giannisdoukas/CWLJNIKernel/dev/tests/cwl/grep.cwl",
+                    "type": "file",
+                    "content": "Y2xhc3M6IENvbW1hbmRMaW5lVG9vbApjd2xWZXJzaW9uOiB2MS4wCmlkOiBn\ncmVwCmJhc2VDb21tYW5kOgogIC0gZ3JlcAppbnB1dHM6CiAgLSBpZDogcXVl\ncnkKICAgIHR5cGU6IHN0cmluZwogICAgaW5wdXRCaW5kaW5nOgogICAgICBw\nb3NpdGlvbjogMAogIC0gaWQ6IGxpbmVzX2JlbGxvdwogICAgdHlwZTogaW50\nPwogICAgaW5wdXRCaW5kaW5nOgogICAgICBwb3NpdGlvbjogMQogICAgICBw\ncmVmaXg6ICctQScKICAtIGlkOiBsaW5lc19hYm92ZQogICAgdHlwZTogaW50\nPwogICAgaW5wdXRCaW5kaW5nOgogICAgICBwb3NpdGlvbjogMgogICAgICBw\ncmVmaXg6ICctQicKICAtIGlkOiBncmVwaW5wdXQKICAgIHR5cGU6IEZpbGUK\nICAgIGlucHV0QmluZGluZzoKICAgICAgcG9zaXRpb246IDEwCm91dHB1dHM6\nCiAgLSBpZDogZ3JlcG91dHB1dAogICAgdHlwZTogc3Rkb3V0CmxhYmVsOiBo\nZWFkCnN0ZG91dDogZ3JlcG91dHB1dC5vdXQ=\n",
+                    "encoding": "base64",
+                    "_links": {
+                        "self": "https://api.github.com/repos/giannisdoukas/CWLJNIKernel/contents/tests/cwl/grep.cwl?ref=dev",
+                        "git": "https://api.github.com/repos/giannisdoukas/CWLJNIKernel/git/blobs/a0ce6c241f90eafd0b4c489a1880368f2ceca1d9",
+                        "html": "https://github.com/giannisdoukas/CWLJNIKernel/blob/dev/tests/cwl/grep.cwl"
+                    }
+                }
+            }
+        ))
+        kernel = CWLKernel()
+        # cancel send_response
+        responses = []
+        kernel.send_response = lambda *args, **kwargs: responses.append((args, kwargs))
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(
+                "% githubImport https://github.com/giannisdoukas/CWLJNIKernel/blob/dev/tests/cwl/3stepWorkflow.cwl")
+        )
+
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(f"""% execute threesteps
+inputfile:
+    class: File
+    location: {os.sep.join([self.cwl_directory, '3stepWorkflow.cwl'])}
+query: id""")
+        )
+
+    def test_githubImport_without_id(self):
+        when(requests) \
+            .get("https://api.github.com/repos/giannisdoukas/CWLJNIKernel/contents/tests/cwl/without_id.cwl?ref=dev") \
+            .thenReturn(mock({
+            'status_code': 200,
+            'json': lambda: {
+                "name": "without_id.cwl",
+                "path": "tests/cwl/without_id.cwl",
+                "sha": "8dd9d522c666d469c75bac566957e78acdb4a5f6",
+                "size": 129,
+                "url": "https://api.github.com/repos/giannisdoukas/CWLJNIKernel/contents/tests/cwl/without_id.cwl?ref=dev",
+                "html_url": "https://github.com/giannisdoukas/CWLJNIKernel/blob/dev/tests/cwl/without_id.cwl",
+                "git_url": "https://api.github.com/repos/giannisdoukas/CWLJNIKernel/git/blobs/8dd9d522c666d469c75bac566957e78acdb4a5f6",
+                "download_url": "https://raw.githubusercontent.com/giannisdoukas/CWLJNIKernel/dev/tests/cwl/without_id.cwl",
+                "type": "file",
+                "content": "Y3dsVmVyc2lvbjogdjEuMApjbGFzczogQ29tbWFuZExpbmVUb29sCmJhc2VD\nb21tYW5kOiBbZWNobywgImhlbGxvIHdvcmxkIl0KaW5wdXRzOiBbXQpvdXRw\ndXRzOgogIGV4YW1wbGVfb3V0cHV0OgogICAgdHlwZTogc3Rkb3V0\n",
+                "encoding": "base64",
+                "_links": {
+                    "self": "https://api.github.com/repos/giannisdoukas/CWLJNIKernel/contents/tests/cwl/without_id.cwl?ref=dev",
+                    "git": "https://api.github.com/repos/giannisdoukas/CWLJNIKernel/git/blobs/8dd9d522c666d469c75bac566957e78acdb4a5f6",
+                    "html": "https://github.com/giannisdoukas/CWLJNIKernel/blob/dev/tests/cwl/without_id.cwl"
+                }
+            }}))
+
+        kernel = CWLKernel()
+        # cancel send_response
+        responses = []
+        kernel.send_response = lambda *args, **kwargs: responses.append((args, kwargs))
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(
+                "% githubImport https://github.com/giannisdoukas/CWLJNIKernel/blob/dev/tests/cwl/without_id.cwl")
+        )
+        self.assertRegex(responses[-1][0][2]['text'], r"^tool '[a-zA-Z0-9-]+' registered")
+
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(f"""% execute {responses[-1][0][2]['text'].split("'")[1]}""")
+        )
+
+    def test_viewTool(self):
+        kernel = CWLKernel()
+        # cancel send_response
+        responses = []
+        kernel.send_response = lambda *args, **kwargs: responses.append((args, kwargs))
+
+        with open(os.sep.join([self.cwl_directory, 'echo.cwl'])) as f:
+            cwl_string = f.read()
+
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(f"""{cwl_string}""")
+        )
+
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(f"""% viewTool x""")
+        )
+        self.assertEqual(
+            "Tool 'x' is not registered",
+            responses[-1][0][2]['text']
+        )
+
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(f"""% viewTool echo""")
+        )
+
+        self.assertDictEqual(
+            yaml.load(StringIO(cwl_string), yaml.Loader),
+            responses[-1][0][2]['data']['application/json']
+        )
+
+    def test_display_data_csv(self):
+        kernel = CWLKernel()
+        # cancel send_response
+        responses = []
+        kernel.send_response = lambda *args, **kwargs: responses.append((args, kwargs))
+
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(f"""% display_data_csv no-existing""")
+        )
+        self.assertEqual(
+            'Result not found',
+            responses[-1][0][2]['text']
+        )
+
+        with open(os.sep.join([self.cwl_directory, 'head.cwl'])) as f:
+            head = f.read()
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(head)
+        )
+
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(f"""% execute head 
+headinput:
+    class: File
+    location: {os.sep.join([self.data_directory, 'data.csv'])}
+number_of_lines: 15""")
+        )
+
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute("% display_data_csv headoutput")
+        )
+
+        self.assertListEqual(
+            [-54, -85, -5, 47, 39, 20, -58, 24, 12, 13, 4, -22, -1, -70, 44, -30, 91, -6, 40, -24],
+            list(pd.read_html(responses[-1][0][2]['data']['text/html'], header=None)[0].values[0])
+        )
+
+    def test_sample_csv(self):
+        kernel = CWLKernel()
+        # cancel send_response
+        responses = []
+        kernel.send_response = lambda *args, **kwargs: responses.append((args, kwargs))
+
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(f"""% display_data_csv no-existing""")
+        )
+        self.assertEqual(
+            'Result not found',
+            responses[-1][0][2]['text']
+        )
+
+        with open(os.sep.join([self.cwl_directory, 'head.cwl'])) as f:
+            head = f.read()
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(head)
+        )
+
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(f"""% execute head 
+        headinput:
+            class: File
+            location: {os.sep.join([self.data_directory, 'data.csv'])}
+        number_of_lines: 15""")
+        )
+
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute("% sample_csv headoutput 0.2")
+        )
+
+        shape = pd.read_html(responses[-1][0][2]['data']['text/html'], header=None)[0].shape
+        print('shape:', shape)
+        self.assertAlmostEqual(shape[0], 4, delta=4)
+        self.assertEqual(shape[1], 20)
 
 
 if __name__ == '__main__':

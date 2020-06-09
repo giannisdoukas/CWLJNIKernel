@@ -26,5 +26,4 @@ inputs:
       prefix: --file=
       separate: false
       position: 4
-
 outputs: []

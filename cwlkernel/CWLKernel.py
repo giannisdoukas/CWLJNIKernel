@@ -1,25 +1,29 @@
-from io import StringIO
-
+import json
 import logging
 import os
-from typing import List, Dict, Optional, Tuple, Union
 import re
+import traceback
+from pathlib import Path
+from typing import List, Dict, Optional, Tuple, Union, Callable, NoReturn
+
 from ipykernel.kernelbase import Kernel
 from ruamel import yaml
 from ruamel.yaml import YAML
 
-from cwlkernel.CWLBuilder import CWLSnippetBuilder
-from cwlkernel.CWLLogger import CWLLogger
+from .CWLBuilder import CWLSnippetBuilder
 from .CWLExecuteConfigurator import CWLExecuteConfigurator
+from .CWLLogger import CWLLogger
 from .CoreExecutor import CoreExecutor
 from .IOManager import IOFileManager
+from .cwlrepository.CWLComponent import WorkflowComponentFactory, CWLWorkflow
 from .cwlrepository.cwlrepository import WorkflowRepository
-from .cwlrepository.CWLComponent import WorkflowComponentFactory, WorkflowComponent, CWLWorkflow
+from .git.CWLGitResolver import CWLGitResolver
 
 logger = logging.Logger('CWLKernel')
 
 
 class CWLKernel(Kernel):
+    """Jupyter Notebook kernel for CWL."""
     implementation = 'CWLKernel'
     implementation_version = '0.1'
     language_version = '1.0'
@@ -30,23 +34,30 @@ class CWLKernel(Kernel):
     }
     banner = "Common Workflow Language"
 
-    _magic_commands = frozenset(['execute', 'logs', 'data', 'display_data', 'snippet', 'newWorkflow',
-                                 'newWorkflowAddStep', 'newWorkflowAddInput', 'newWorkflowBuild'])
+    _magic_commands: Dict = {}
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         conf = CWLExecuteConfigurator()
         self._yaml_input_data: Optional[str] = None
-        self._results_manager = IOFileManager(os.sep.join([conf.CWLKERNEL_BOOT_DIRECTORY, 'results']))
-        runtime_file_manager = IOFileManager(os.sep.join([conf.CWLKERNEL_BOOT_DIRECTORY, 'runtime_data']))
+        self._results_manager = IOFileManager(os.sep.join([conf.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'results']))
+        runtime_file_manager = IOFileManager(os.sep.join([conf.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'runtime_data']))
         self._cwl_executor = CoreExecutor(runtime_file_manager)
         self._pid = (os.getpid(), os.getppid())
-        self._cwl_logger = CWLLogger(os.path.join(conf.CWLKERNEL_BOOT_DIRECTORY, 'logs'))
+        self._cwl_logger = CWLLogger(os.path.join(conf.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'logs'))
         self._set_process_ids()
         self._cwl_logger.save()
-        self._workflow_repository = WorkflowRepository()
+        self._workflow_repository = WorkflowRepository(
+            Path(os.sep.join([conf.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'repo'])))
         self._snippet_builder = CWLSnippetBuilder()
         self._workflow_composer: Optional[CWLWorkflow] = None
+        self._github_resolver: CWLGitResolver = CWLGitResolver(
+            Path(os.sep.join([conf.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'git'])))
+
+    @staticmethod
+    def register_magic(magic: Callable):
+        CWLKernel._magic_commands[magic.__name__] = magic
+        return magic
 
     def _set_process_ids(self):
         self._cwl_logger.process_id = {
@@ -71,48 +82,23 @@ class CWLKernel(Kernel):
 
     def do_execute(self, code: str, silent=False, store_history: bool = True,
                    user_expressions=None, allow_stdin: bool = False) -> Dict:
+        status = 'ok'
         try:
             if self._is_magic_command(code):
                 self._do_execute_magic_command(code)
-                return {
-                    'status': 'ok',
-                    # The base class increments the execution count
-                    'execution_count': self.execution_count,
-                    'payload': [],
-                    'user_expressions': {},
-                }
             else:
                 dict_code = self._code_is_valid_yaml(code)
                 if dict_code is None:
-                    self.send_response(
-                        self.iopub_socket, 'stream',
-                        {'name': 'stderr', 'text': f'Unknown input'}
-                    )
-                    return {
-                        'status': 'error',
-                        # The base class increments the execution count
-                        'execution_count': self.execution_count,
-                        'payload': [],
-                        'user_expressions': {},
-                    }
+                    raise RuntimeError('Input cannot be parsed')
                 else:
-                    status, exception = self._do_execute_yaml(dict_code, code)
-                    return {
-                        'status': status,
-                        # The base class increments the execution count
-                        'execution_count': self.execution_count,
-                        'payload': [],
-                        'user_expressions': {},
-                    }
+                    self._do_execute_yaml(dict_code, code)
         except Exception as e:
-            import traceback
+            status = 'error'
             traceback.print_exc()
-            self.send_response(
-                self.iopub_socket, 'stream',
-                {'name': 'stderr', 'text': f'{type(e).__name__}: {e}'}
-            )
+            self._send_error_response(f'{type(e).__name__}: {e}')
+        finally:
             return {
-                'status': 'error',
+                'status': status,
                 # The base class increments the execution count
                 'execution_count': self.execution_count,
                 'payload': [],
@@ -120,27 +106,15 @@ class CWLKernel(Kernel):
             }
 
     def _do_execute_yaml(self, dict_code, code):
-        exception = None
         if not self._is_cwl(dict_code):
             raise NotImplementedError()
         else:
-            try:
-                cwl_component = WorkflowComponentFactory().get_workflow_component(code)
-                self._workflow_repository.register_tool(cwl_component)
-                self.send_response(
-                    self.iopub_socket, 'stream',
-                    {'name': 'stdout', 'text': f"tool '{cwl_component.id}' registered"}
-                )
-            except Exception as e:
-                exception = e
-
-        status = 'ok' if exception is None else 'error'
-        if exception is not None:
+            cwl_component = WorkflowComponentFactory().get_workflow_component(code)
+            self._workflow_repository.register_tool(cwl_component)
             self.send_response(
                 self.iopub_socket, 'stream',
-                {'name': 'stderr', 'text': f'{type(exception).__name__}: {exception}'}
+                {'name': 'stdout', 'text': f"tool '{cwl_component.id}' registered"}
             )
-        return status, exception
 
     def _do_execute_magic_command(self, commands: str):
         for command in re.compile(r'^%[ ]+', re.MULTILINE).split(commands):
@@ -150,86 +124,10 @@ class CWLKernel(Kernel):
             command = command.split(" ")
             command_name = command[0].strip()
             args = " ".join(command[1:])
-            getattr(self, f'_execute_magic_{command_name}')(args)
-
-    def _execute_magic_newWorkflowBuild(self, *args):
-        self._send_json_response(self._workflow_composer.to_dict())
-        self._workflow_repository.register_tool(self._workflow_composer)
-        self._workflow_composer = None
-
-    def _execute_magic_newWorkflowAddInput(self, args: str):
-        import yaml as y
-        args = args.splitlines()
-        step_id, step_in_id = args[0].split()
-        input_description = '\n'.join(args[1:])
-        input_description = y.load(StringIO(input_description), y.Loader)
-        self._workflow_composer.add_input(
-            workflow_input=input_description,
-            step_id=step_id.strip(),
-            in_step_id=step_in_id.strip())
-
-    def _execute_magic_newWorkflowAddStepIn(self, args: str):
-        args = args.splitlines()
-        step_in_args = args[0].split()
-        input_description = '\n'.join(args[1:])
-        import yaml as y
-        input_description = y.load(StringIO(input_description), y.Loader)
-        for input_id, description in input_description.items():
-            self._workflow_composer.add_step_in_out(description, input_id, *step_in_args)
-
-    def _execute_magic_newWorkflowAddStep(self, ids: str):
-        tool_id, step_id = ids.split()
-        tool = self._workflow_repository.get_by_id(tool_id)
-        self._workflow_composer.add(tool, step_id)
-
-    def _execute_magic_newWorkflow(self, id: str):
-        self._workflow_composer = CWLWorkflow(id)
-
-    def _execute_magic_snippet(self, command: str):
-        command = command.splitlines()
-        command[0] = command[0].strip()
-        y = YAML(typ='rt')
-        if command[0] == "add":
-            snippet = '\n'.join(command[1:])
-            self._snippet_builder.append(snippet)
-            current_code = y.load(StringIO(self._snippet_builder.get_current_code()))
-        elif command[0] == "build":
-            snippet = '\n'.join(command[1:])
-            self._snippet_builder.append(snippet)
-            workflow = self._snippet_builder.build()
-            self._workflow_repository.register_tool(workflow)
-            current_code = y.load(StringIO(self._snippet_builder.get_current_code()))
-            self._snippet_builder.clear()
-        else:
-            raise ValueError()
-        self._send_json_response(current_code)
-
-    def _execute_magic_execute(self, execute_argument_string: str):
-        execute_argument_string = execute_argument_string.splitlines()
-        cwl_id = execute_argument_string[0].strip()
-        cwl_component: WorkflowComponent = self._workflow_repository.get_by_id(cwl_id)
-        self._set_data('\n'.join(execute_argument_string[1:]))
-        self._execute_workflow(cwl_component.to_yaml(True))
-        self._clear_data()
-
-    def _execute_magic_display_data(self, data_name: str):
-        if not isinstance(data_name, str) or len(data_name.split()) == 0:
-            self._send_error_response(
-                'ERROR: you must select an output to display. Correct format:\n % display_data [output name]'
-            )
-            return
-        results = list(
-            filter(lambda item: item[1]['id'] == data_name, self._results_manager.get_files_registry().items()))
-        if len(results) != 1:
-            self.send_response(self.iopub_socket, 'stream', {'name': 'stderr', 'text': 'Result not found'})
-            return
-        results = results[0]
-        with open(results[0]) as f:
-            data = f.read()
-        self.send_response(self.iopub_socket, 'stream', {'name': 'stdout', 'text': data})
+            self._magic_commands[command_name](self, args)
 
     def _send_error_response(self, text):
-        self.send_response(self.iopub_socket, 'stream', {'name': 'stdout', 'text': text})
+        self.send_response(self.iopub_socket, 'stream', {'name': 'stderr', 'text': text})
 
     def _send_json_response(self, json_data: Union[Dict, List]):
         self.send_response(
@@ -237,7 +135,7 @@ class CWLKernel(Kernel):
             'display_data',
             {
                 'data': {
-                    'text/plain': '<IPython.core.display.JSON object>',
+                    'text/plain': json.dumps(json_data),
                     'application/json': json_data
                 },
                 'metadata': {
@@ -249,52 +147,7 @@ class CWLKernel(Kernel):
             }
         )
 
-    def _execute_magic_logs(self, limit=None):
-        logger.error('Execute logs magic command')
-        limit_len = len(limit)
-        if limit_len == 0:
-            limit = None
-        if limit_len > 0:
-            limit = limit[0]
-        if isinstance(limit, str):
-            limit = int(limit)
-        self.send_response(
-            self.iopub_socket,
-            'display_data',
-            {
-                'data': {
-                    'text/plain': '<IPython.core.display.JSON object>',
-                    'application/json': list(self._cwl_logger.load(limit))
-                },
-                'metadata': {
-                    'application/json': {
-                        'expanded': False,
-                        'root': 'root'
-                    }
-                }
-            }
-        )
-
-    def _execute_magic_data(self, *args):
-        data = "<ul>\n" + '\n'.join(
-            [f'\t<li><a href="file://{d}" target="_empty">{d}</a></li>' for d in self.get_past_results()]) + "\n</ul>"
-        self.send_response(
-            self.iopub_socket,
-            'display_data',
-            {
-                'data': {
-                    'text/html': data
-                },
-                'metadata': {
-                    'application/json': {
-                        'expanded': False,
-                        'root': 'root'
-                    }
-                }
-            }
-        )
-
-    def _set_data(self, code: str) -> Optional[Exception]:
+    def _set_data(self, code: str) -> NoReturn:
         if len(code.split()) > 0:
             cwl = self._cwl_executor.file_manager.get_files_uri().path
             self._cwl_executor.validate_input_files(yaml.load(code, Loader=yaml.Loader), cwl)
@@ -304,18 +157,19 @@ class CWLKernel(Kernel):
     def _clear_data(self):
         self._yaml_input_data = None
 
-    def _execute_workflow(self, code) -> Optional[Exception]:
+    def _execute_workflow(self, code_path: Path) -> Optional[Exception]:
         input_data = [self._yaml_input_data] if self._yaml_input_data is not None else []
         self._cwl_executor.set_data(input_data)
-        self._cwl_executor.set_workflow(code)
+        self._cwl_executor.set_workflow_path(str(code_path))
         logger.debug('starting executing workflow ...')
         run_id, results, exception = self._cwl_executor.execute()
         logger.debug(f'\texecution results: {run_id}, {results}, {exception}')
         output_directory_for_that_run = str(run_id)
         for output in results:
             if isinstance(results[output], list):
-                for i, output_i in enumerate(results[output]):
+                for i, _ in enumerate(results[output]):
                     results[output][i]['id'] = f'{output}_{i + 1}'
+                    results[output][i]['result_counter'] = self._results_manager.files_counter
                     self._results_manager.append_files(
                         [results[output][i]['location']],
                         output_directory_for_that_run,
@@ -323,27 +177,13 @@ class CWLKernel(Kernel):
                     )
             else:
                 results[output]['id'] = output
+                results[output]['result_counter'] = self._results_manager.files_counter
                 self._results_manager.append_files(
                     [results[output]['location']],
                     output_directory_for_that_run,
                     metadata=results[output]
                 )
-        self.send_response(
-            self.iopub_socket,
-            'display_data',
-            {
-                'data': {
-                    'text/plain': '<IPython.core.display.JSON object>',
-                    'application/json': results
-                },
-                'metadata': {
-                    'application/json': {
-                        'expanded': False,
-                        'root': 'root'
-                    }
-                }
-            }
-        )
+        self._send_json_response(results)
         if exception is not None:
             logger.debug(f'execution error: {exception}')
             self.send_response(self.iopub_socket, 'stream', {'name': 'stderr', 'text': str(exception)})
@@ -356,9 +196,7 @@ class CWLKernel(Kernel):
         return 'cwlVersion' in code.keys()
 
     def get_pid(self) -> Tuple[int, int]:
-        """
-        :return: The process id and his parents id
-        """
+        """:return: The process id and his parents id."""
         return self._pid
 
 
