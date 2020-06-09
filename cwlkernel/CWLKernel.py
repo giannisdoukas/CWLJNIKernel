@@ -23,7 +23,6 @@ logger = logging.Logger('CWLKernel')
 
 
 class CWLKernel(Kernel):
-
     """Jupyter Notebook kernel for CWL."""
     implementation = 'CWLKernel'
     implementation_version = '0.1'

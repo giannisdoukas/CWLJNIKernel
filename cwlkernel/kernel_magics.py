@@ -11,7 +11,7 @@ from .cwlrepository.CWLComponent import CWLWorkflow, WorkflowComponent, Workflow
 
 
 def _get_result_path(results_manager: IOFileManager, result_id: str) -> Optional[str]:
-    """Return the path of the result file or None"""
+    """Return the path of the result file or None."""
     results = sorted(
         filter(lambda item: item[1]['id'] == result_id, results_manager.get_files_registry().items()),
         key=lambda item: item[1]['result_counter']

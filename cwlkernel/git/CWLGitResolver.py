@@ -11,7 +11,7 @@ from requests.compat import urljoin
 
 
 class CWLGitResolver:
-    """CWLGitResolver fetches the required cwl files from a remote git url"""
+    """CWLGitResolver fetches the required cwl files from a remote git url."""
 
     def __init__(self, local_directory: Path):
         self._local_root_directory = local_directory
