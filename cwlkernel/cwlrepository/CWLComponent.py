@@ -10,8 +10,8 @@ import yaml
 class WorkflowComponent(ABC):
     _id: str
 
-    def __init__(self, id: str, component: Optional[Dict]):
-        self._id: str = id
+    def __init__(self, workflow_id: str, component: Optional[Dict]):
+        self._id: str = workflow_id
         if component is not None:
             if isinstance(component['inputs'], Dict):
                 component['inputs'] = self._convert_inputs_from_dict_to_list(component['inputs'])
@@ -55,8 +55,8 @@ class WorkflowComponent(ABC):
 
 class CWLTool(WorkflowComponent):
 
-    def __init__(self, id: str, command_line_tool: Dict):
-        super().__init__(id, command_line_tool)
+    def __init__(self, workflow_id: str, command_line_tool: Dict):
+        super().__init__(workflow_id, command_line_tool)
         self._command_line_tool = command_line_tool
 
     @property
