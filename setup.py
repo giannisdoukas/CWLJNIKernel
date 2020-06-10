@@ -3,7 +3,6 @@ import os.path
 import subprocess
 import sys
 
-from jupyter_client.kernelspec import KernelSpecManager
 from setuptools import setup
 from setuptools.command.develop import develop
 from setuptools.command.install import install
@@ -13,6 +12,11 @@ name = 'cwlkernel'
 
 def install_kernel_specs():
     import sys
+    try:
+        from jupyter_client.kernelspec import KernelSpecManager
+    except ImportError:
+        subprocess.run([sys.executable, '-m', 'pip', 'install', 'jupyter-client>=5.3.1'])
+        from jupyter_client.kernelspec import KernelSpecManager
     kernel_requirements_directory = os.path.join(
         os.path.dirname(os.path.realpath(__file__)),
         'kernelmeta'
@@ -81,6 +85,9 @@ setup(
         "Operating System :: POSIX",
         "Development Status :: 2 - Pre-Alpha",
         "Framework :: IPython",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
     ],
     cmdclass={
         'develop': PostDevelopCommand,
