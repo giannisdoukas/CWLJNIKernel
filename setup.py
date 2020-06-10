@@ -1,7 +1,5 @@
 import codecs
 import os.path
-import subprocess
-import sys
 
 from setuptools import setup
 from setuptools.command.develop import develop
@@ -12,11 +10,7 @@ name = 'cwlkernel'
 
 def install_kernel_specs():
     import sys
-    try:
-        from jupyter_client.kernelspec import KernelSpecManager
-    except ImportError:
-        subprocess.run([sys.executable, '-m', 'pip', 'install', 'jupyter-client>=5.3.1'])
-        from jupyter_client.kernelspec import KernelSpecManager
+    from jupyter_client.kernelspec import KernelSpecManager
     kernel_requirements_directory = os.path.join(
         os.path.dirname(os.path.realpath(__file__)),
         'kernelmeta'
@@ -35,8 +29,7 @@ class PostDevelopCommand(develop):
     """Post-installation for development mode."""
 
     def run(self):
-        subprocess.run([sys.executable, '-m', 'pip', 'install', '-r', 'requirements.txt'])
-        develop.run(self)
+        super().run()
         install_kernel_specs()
 
 
@@ -44,8 +37,7 @@ class PostInstallCommand(install):
     """Post-installation for installation mode."""
 
     def run(self):
-        subprocess.run([sys.executable, '-m', 'pip', 'install', '-r', 'requirements.txt'])
-        install.run(self)
+        super().do_egg_install()
         install_kernel_specs()
 
 
@@ -66,6 +58,16 @@ def get_version(rel_path):
 
 with open(os.sep.join([os.path.abspath(os.path.dirname(__file__)), "README.md"]), "r") as fh:
     long_description = fh.read()
+
+with open('requirements.txt') as f:
+    req = f.readlines()
+
+for i, r in enumerate(req):
+    r = r.rstrip()
+    if r.startswith('git+https://'):
+        egg_position = r.rfind("#egg=")
+        dependency_name = r[egg_position + 5:]
+        req[i] = f"{dependency_name} @ {r[:egg_position]}"
 
 setup(
     name=name,
@@ -89,8 +91,9 @@ setup(
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
     ],
-    cmdclass={
-        'develop': PostDevelopCommand,
-        'install': PostInstallCommand,
-    },
+    # cmdclass={
+    #     'develop': PostDevelopCommand,
+    #     'install': PostInstallCommand,
+    # },
+    install_requires=req
 )
