@@ -21,3 +21,4 @@ PyYAML>=5.3.1
 pandas>=1.0.4
 notebook>=6.0.3
 requests>=2.23.0
+pygtrie>=2.3.3

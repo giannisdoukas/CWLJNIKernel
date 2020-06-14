@@ -1,5 +1,4 @@
 import json
-import logging
 import os
 import re
 import traceback
@@ -10,6 +9,7 @@ from ipykernel.kernelbase import Kernel
 from ruamel import yaml
 from ruamel.yaml import YAML
 
+from .AutoCompleteEngine import AutoCompleteEngine
 from .CWLBuilder import CWLSnippetBuilder
 from .CWLExecuteConfigurator import CWLExecuteConfigurator
 from .CWLLogger import CWLLogger
@@ -18,8 +18,6 @@ from .IOManager import IOFileManager
 from .cwlrepository.CWLComponent import WorkflowComponentFactory, CWLWorkflow
 from .cwlrepository.cwlrepository import WorkflowRepository
 from .git.CWLGitResolver import CWLGitResolver
-
-logger = logging.Logger('CWLKernel')
 
 
 class CWLKernel(Kernel):
@@ -35,6 +33,7 @@ class CWLKernel(Kernel):
     banner = "Common Workflow Language"
 
     _magic_commands: Dict = {}
+    _auto_complete_engine = AutoCompleteEngine(_magic_commands)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -54,9 +53,10 @@ class CWLKernel(Kernel):
         self._github_resolver: CWLGitResolver = CWLGitResolver(
             Path(os.sep.join([conf.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'git'])))
 
-    @staticmethod
-    def register_magic(magic: Callable):
-        CWLKernel._magic_commands[magic.__name__] = magic
+    @classmethod
+    def register_magic(cls, magic: Callable):
+        cls._magic_commands[magic.__name__] = magic
+        cls._auto_complete_engine.add_magic_command(magic.__name__)
         return magic
 
     def _set_process_ids(self):
@@ -161,9 +161,9 @@ class CWLKernel(Kernel):
         input_data = [self._yaml_input_data] if self._yaml_input_data is not None else []
         self._cwl_executor.set_data(input_data)
         self._cwl_executor.set_workflow_path(str(code_path))
-        logger.debug('starting executing workflow ...')
+        self.log.debug('starting executing workflow ...')
         run_id, results, exception = self._cwl_executor.execute()
-        logger.debug(f'\texecution results: {run_id}, {results}, {exception}')
+        self.log.debug(f'\texecution results: {run_id}, {results}, {exception}')
         output_directory_for_that_run = str(run_id)
         for output in results:
             if isinstance(results[output], list):
@@ -185,7 +185,7 @@ class CWLKernel(Kernel):
                 )
         self._send_json_response(results)
         if exception is not None:
-            logger.debug(f'execution error: {exception}')
+            self.log.debug(f'execution error: {exception}')
             self.send_response(self.iopub_socket, 'stream', {'name': 'stderr', 'text': str(exception)})
             return exception
 
@@ -198,6 +198,12 @@ class CWLKernel(Kernel):
     def get_pid(self) -> Tuple[int, int]:
         """:return: The process id and his parents id."""
         return self._pid
+
+    def do_complete(self, code: str, cursor_pos: int):
+        self.log.debug(f"code: {code}\ncursor_pos: {cursor_pos}\ncode[{cursor_pos}]=XXX")
+        suggestions = self._auto_complete_engine.suggest(code, cursor_pos)
+        self.log.debug(f'suggestions: {suggestions["matches"]}')
+        return {**suggestions, 'status': 'ok'}
 
 
 if __name__ == '__main__':
