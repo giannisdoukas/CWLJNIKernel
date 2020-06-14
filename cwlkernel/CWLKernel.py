@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import re
 import traceback
@@ -52,6 +53,8 @@ class CWLKernel(Kernel):
         self._workflow_composer: Optional[CWLWorkflow] = None
         self._github_resolver: CWLGitResolver = CWLGitResolver(
             Path(os.sep.join([conf.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'git'])))
+        if self.log is None:
+            self.log = logging.getLogger()
 
     @classmethod
     def register_magic(cls, magic: Callable):
