@@ -20,12 +20,13 @@ from .cwlrepository.CWLComponent import WorkflowComponentFactory, CWLWorkflow
 from .cwlrepository.cwlrepository import WorkflowRepository
 from .git.CWLGitResolver import CWLGitResolver
 
+version = "0.0.2"
 
 class CWLKernel(Kernel):
     """Jupyter Notebook kernel for CWL."""
     implementation = 'CWLKernel'
-    implementation_version = '0.1'
-    language_version = '1.0'
+    implementation_version = version
+    language_version = '1.1'
     language_info = {
         'name': 'yaml',
         'mimetype': 'text/x-cwl',
