@@ -49,7 +49,7 @@ def read(rel_path):
 
 def get_version(rel_path):
     for line in read(rel_path).splitlines():
-        if line.startswith('__version__'):
+        if line.startswith('version'):
             delim = '"' if '"' in line else "'"
             return line.split(delim)[1]
     else:
@@ -71,7 +71,7 @@ for i, r in enumerate(req):
 
 setup(
     name=name,
-    version=get_version(f"{name}/__init__.py"),
+    version=get_version(f"{name}/CWLKernel.py"),
     packages=['cwlkernel', 'cwlkernel.cwlrepository', 'cwlkernel.git'],
     url='https://github.com/giannisdoukas/CWLJNIKernel',
     author='Yannis Doukas',
