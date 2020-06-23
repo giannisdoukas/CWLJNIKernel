@@ -22,6 +22,7 @@ from .git.CWLGitResolver import CWLGitResolver
 
 version = "0.0.2"
 
+
 class CWLKernel(Kernel):
     """Jupyter Notebook kernel for CWL."""
     implementation = 'CWLKernel'
