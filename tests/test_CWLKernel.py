@@ -14,6 +14,7 @@ import yaml
 from mockito import when, mock
 from ruamel.yaml import YAML
 
+from cwlkernel.CWLKernel import CONF as KERNEL_CONF
 from cwlkernel.CWLKernel import CWLKernel
 from cwlkernel.cwlrepository.cwlrepository import WorkflowRepository
 
@@ -789,6 +790,49 @@ number_of_lines: 15""")
         print('shape:', shape)
         self.assertAlmostEqual(shape[0], 4, delta=4)
         self.assertEqual(shape[1], 20)
+
+    def test_import_users_magic_commands(self):
+        import importlib
+        import cwlkernel.kernel_magics
+        self.assertIsNone(KERNEL_CONF.CWLKERNEL_MAGIC_COMMANDS_DIRECTORY)
+        tmp_magic_dir = tempfile.mkdtemp()
+        os.environ['CWLKERNEL_MAGIC_COMMANDS_DIRECTORY'] = tmp_magic_dir
+        m1_code = os.linesep.join([
+            "from .CWLKernel import CWLKernel",
+            "@CWLKernel.register_magic",
+            "def m1(*args, **kwards):",
+            "\tmsg = 'm1 magic function'",
+            "\tprint(msg)",
+            "\treturn msg",
+        ])
+        with open(os.path.join(tmp_magic_dir, 'm1.py'), 'w') as f:
+            f.write(m1_code)
+        m2_code = os.linesep.join([
+            "from .CWLKernel import CWLKernel",
+            "@CWLKernel.register_magic",
+            "def m2(*args, **kwards):",
+            "\tmsg = 'm2 magic function'",
+            "\tprint(msg)",
+            "\treturn msg",
+        ])
+        with open(os.path.join(tmp_magic_dir, 'm2.py'), 'w') as f:
+            f.write(m2_code)
+
+        importlib.reload(cwlkernel.CWLKernel)
+        importlib.reload(cwlkernel.kernel_magics)
+
+        self.assertIsNone(KERNEL_CONF.CWLKERNEL_MAGIC_COMMANDS_DIRECTORY)
+        self.assertIn('m1', cwlkernel.CWLKernel.CWLKernel._magic_commands)
+        self.assertIn('m2', cwlkernel.CWLKernel.CWLKernel._magic_commands)
+
+        self.assertEqual(
+            'm1 magic function',
+            cwlkernel.CWLKernel.CWLKernel._magic_commands['m1']()
+        )
+        self.assertEqual(
+            'm2 magic function',
+            cwlkernel.CWLKernel.CWLKernel._magic_commands['m2']()
+        )
 
 
 if __name__ == '__main__':

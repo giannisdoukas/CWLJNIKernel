@@ -5,6 +5,7 @@ from typing import Optional
 
 from ruamel.yaml import YAML
 
+from .CWLKernel import CONF as CWLKernel_CONF
 from .CWLKernel import CWLKernel
 from .IOManager import IOFileManager
 from .cwlrepository.CWLComponent import CWLWorkflow, WorkflowComponent, WorkflowComponentFactory
@@ -281,3 +282,14 @@ def viewTool(kernel: CWLKernel, workflow_id: str):
         kernel._send_json_response(workflow.to_dict())
     else:
         kernel._send_error_response(f"Tool '{workflow_id}' is not registered")
+
+
+# import user's magic commands
+import os
+
+if CWLKernel_CONF.CWLKERNEL_MAGIC_COMMANDS_DIRECTORY is not None:
+    for magic_file in os.listdir(CWLKernel_CONF.CWLKERNEL_MAGIC_COMMANDS_DIRECTORY):
+        magic_file = os.path.abspath(os.path.join(CWLKernel_CONF.CWLKERNEL_MAGIC_COMMANDS_DIRECTORY, magic_file))
+        if os.path.isfile(magic_file) and magic_file.endswith('.py'):
+            with open(magic_file) as code:
+                exec(code.read())

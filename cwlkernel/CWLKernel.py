@@ -22,6 +22,8 @@ from .git.CWLGitResolver import CWLGitResolver
 
 version = "0.0.2"
 
+CONF = CWLExecuteConfigurator()
+
 
 class CWLKernel(Kernel):
     """Jupyter Notebook kernel for CWL."""
@@ -40,21 +42,20 @@ class CWLKernel(Kernel):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        conf = CWLExecuteConfigurator()
         self._yaml_input_data: Optional[str] = None
-        self._results_manager = IOFileManager(os.sep.join([conf.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'results']))
-        runtime_file_manager = IOFileManager(os.sep.join([conf.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'runtime_data']))
+        self._results_manager = IOFileManager(os.sep.join([CONF.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'results']))
+        runtime_file_manager = IOFileManager(os.sep.join([CONF.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'runtime_data']))
         self._cwl_executor = CoreExecutor(runtime_file_manager)
         self._pid = (os.getpid(), os.getppid())
-        self._cwl_logger = CWLLogger(os.path.join(conf.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'logs'))
+        self._cwl_logger = CWLLogger(os.path.join(CONF.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'logs'))
         self._set_process_ids()
         self._cwl_logger.save()
         self._workflow_repository = WorkflowRepository(
-            Path(os.sep.join([conf.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'repo'])))
+            Path(os.sep.join([CONF.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'repo'])))
         self._snippet_builder = CWLSnippetBuilder()
         self._workflow_composer: Optional[CWLWorkflow] = None
         self._github_resolver: CWLGitResolver = CWLGitResolver(
-            Path(os.sep.join([conf.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'git'])))
+            Path(os.sep.join([CONF.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'git'])))
         if self.log is None:
             self.log = logging.getLogger()
 
