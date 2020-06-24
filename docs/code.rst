@@ -7,11 +7,3 @@ Source Code Modules
 
    cwlkernel
    cwlkernel.cwlrepository
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`

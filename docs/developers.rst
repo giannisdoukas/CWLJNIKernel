@@ -45,7 +45,7 @@ Inside the directory, we create the following file `hello.py`.
 
 .. code-block:: python
    :linenos:
-   :emphasize-lines: 3,5
+   :emphasize-lines: 3
 
    from cwlkernel.CWLKernel import CWLKernel
 
