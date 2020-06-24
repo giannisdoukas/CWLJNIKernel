@@ -833,6 +833,7 @@ number_of_lines: 15""")
             'm2 magic function',
             cwlkernel.CWLKernel.CWLKernel._magic_commands['m2']()
         )
+        os.environ.pop('CWLKERNEL_MAGIC_COMMANDS_DIRECTORY')
 
 
 if __name__ == '__main__':

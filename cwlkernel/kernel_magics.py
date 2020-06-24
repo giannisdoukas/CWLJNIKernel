@@ -1,4 +1,5 @@
 import json
+import os
 import random
 from io import StringIO
 from typing import Optional
@@ -285,7 +286,6 @@ def viewTool(kernel: CWLKernel, workflow_id: str):
 
 
 # import user's magic commands
-import os
 
 if CWLKernel_CONF.CWLKERNEL_MAGIC_COMMANDS_DIRECTORY is not None:
     for magic_file in os.listdir(CWLKernel_CONF.CWLKERNEL_MAGIC_COMMANDS_DIRECTORY):
