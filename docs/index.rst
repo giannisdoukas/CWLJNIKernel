@@ -14,7 +14,7 @@ CWLKernel is an Kernel for Jupyter Notebook to enable users to execute `CWL <htt
 
 .. code-block:: yaml
 
-   cwlVersion: v1.0
+   cwlVersion: v1.1
    class: CommandLineTool
    baseCommand: echo
    inputs:
