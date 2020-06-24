@@ -285,11 +285,17 @@ def viewTool(kernel: CWLKernel, workflow_id: str):
         kernel._send_error_response(f"Tool '{workflow_id}' is not registered")
 
 
+@CWLKernel.register_magic
+def magics(kernel: CWLKernel, *args):
+    kernel._send_json_response(list(kernel._magic_commands.keys()))
+
+
 # import user's magic commands
 
 if CWLKernel_CONF.CWLKERNEL_MAGIC_COMMANDS_DIRECTORY is not None:
     for magic_file in os.listdir(CWLKernel_CONF.CWLKERNEL_MAGIC_COMMANDS_DIRECTORY):
         magic_file = os.path.abspath(os.path.join(CWLKernel_CONF.CWLKERNEL_MAGIC_COMMANDS_DIRECTORY, magic_file))
         if os.path.isfile(magic_file) and magic_file.endswith('.py'):
+            print('external magic command imported', magic_file)
             with open(magic_file) as code:
                 exec(code.read())
