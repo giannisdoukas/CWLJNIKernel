@@ -22,7 +22,7 @@ argument_string will be an empty string.
    % command2
 
 
-Kernel's configuration is based on system's environment variables and it is managed by the
+Kernel's configuration is based on the system's environment variables and it is managed by the
 :class:`cwlkernel.CWLExecuteConfigurator.CWLExecuteConfigurator`. The CWLKERNEL_MAGIC_COMMANDS_DIRECTORY variable
 holds the path that the kernel will search for python scripts to execute them. Check the :ref:`basic_magic_example`.
 
@@ -31,7 +31,7 @@ holds the path that the kernel will search for python scripts to execute them. C
 Basic Example: Custom Magic Command
 ------------------------------------------------
 
-In the presented example we want to create magic command which prints the message hello world. Firstly, the
+In the presented example we want to create a magic command which prints the message hello world. Firstly, the
 directory of the custom magic commands should be configured.
 
 .. code-block:: sh
@@ -66,9 +66,9 @@ empty string. Now, we can open a jupyter notebook and run the following command.
 
    % hello
 
-If we want to build a command with more arguments with complicated structure, the usage of
+If we want to build command with more arguments with complicated structure, the usage of
 `argparse <https://docs.python.org/3/library/argparse.html>`_ is suggested. For
-example the aforementioned example could be changed to:
+example, the aforementioned example could be changed to:
 
 .. code-block:: python
    :linenos:
