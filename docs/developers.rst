@@ -91,6 +91,27 @@ example, the aforementioned example could be changed to:
            )
 
 
+Advanced Example: Custom Magic Command
+------------------------------------------------
+
+For custom magic commands with state and complex logic the object-oriented strategy is suggested.
+To do that you have to create a class to encapsulate the logic inside. The state has to be defined as a class attribute.
+The methods should be exposed as magic commands should be defined as static methods and registered as magic commands.
+
+In the following example, a set of magic commands are implemented to enable the user to create Research Objects.
+
+That example has an additional requirement the `rocrate library <https://github.com/ResearchObject/ro-crate-py>`_.
+
+.. tip:: Technical Recommendation
+
+   The kernel is not aware of the sequence that the jupyter notebook's cells are but the kernel receives them in the
+   order that the user executes them. For example, if in the jupyter notebook we have in the following cells
+   `% command1` and `% command2` the user, during his development may execute them in different/wrong order. For
+   use cases that magic commands have a coupled state, to handle better user's input, the usage of
+   `builder pattern is suggested to be considered
+   <https://www.tutorialspoint.com/python_design_patterns/python_design_patterns_builder.htm>`_.
+
+
 
 Code Details
 --------------
