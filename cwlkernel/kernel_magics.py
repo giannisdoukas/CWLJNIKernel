@@ -314,7 +314,7 @@ def magics(kernel: CWLKernel, arg: str):
         try:
             full_doc: str = globals()[arg.magic].__doc__.splitlines()
             doc = []
-            for line_number, line in enumerate(full_doc):
+            for line in full_doc:
                 line = line.strip()
                 if line.startswith('@'):
                     break
