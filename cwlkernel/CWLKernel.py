@@ -211,6 +211,9 @@ class CWLKernel(Kernel):
         self.log.debug(f'suggestions: {suggestions["matches"]}')
         return {**suggestions, 'status': 'ok'}
 
+    def send_text_to_stdout(self, text: str):
+        self.send_response(self.iopub_socket, 'stream', {'name': 'stdout', 'text': text})
+
 
 if __name__ == '__main__':
     from ipykernel.kernelapp import IPKernelApp

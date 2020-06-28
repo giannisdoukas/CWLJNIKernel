@@ -835,6 +835,38 @@ number_of_lines: 15""")
         )
         os.environ.pop('CWLKERNEL_MAGIC_COMMANDS_DIRECTORY')
 
+    def test_magics_magic_command(self):
+        kernel = CWLKernel()
+        # cancel send_response
+        responses = []
+        kernel.send_response = lambda *args, **kwargs: responses.append((args, kwargs))
+
+        commands = [f'\t- {cmd}' for cmd in kernel._magic_commands.keys()]
+        commands.sort()
+
+
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(f"""% magics""")
+        )
+        self.assertEqual(
+            'List of Available Magic commands\n' + os.linesep.join(commands),
+            responses[-1][0][2]['text']
+        )
+
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(f"""% magics data""")
+        )
+        from cwlkernel.kernel_magics import data as data_magic_command
+        import inspect
+        self.assertEqual(
+            inspect.getdoc(data_magic_command),
+            responses[-1][0][2]['text']
+        )
+        self.assertIn(' '.join('Display all the data which are registered in the kernel session.'.split()),
+                      ' '.join(responses[-1][0][2]['text'].split()))
+
 
 if __name__ == '__main__':
     unittest.main()
