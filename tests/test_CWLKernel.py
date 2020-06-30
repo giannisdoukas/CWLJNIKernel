@@ -6,7 +6,6 @@ import tempfile
 import unittest
 from io import StringIO
 from pathlib import Path
-from urllib.parse import urlparse
 
 import pandas as pd
 import requests
@@ -435,7 +434,7 @@ number_of_lines: 15"""
         execute_head = f"""% execute head
 headinput:
     class: File
-    location: {urlparse(responses[-1][0][2]['data']['application/json']['tailoutput']['location']).path}
+    $data: tailoutput
 number_of_lines: 5        
 """
         self.assertDictEqual(

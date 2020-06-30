@@ -67,3 +67,20 @@ class IOFileManager:
         for f in os.listdir(self.ROOT_DIRECTORY):
             if os.path.isfile(f):
                 os.remove(f)
+
+
+class ResultsManager(IOFileManager):
+
+    def get_last_result_by_id(self, result_id: str) -> Optional[str]:
+        """
+        The results manager may have multiple results with the same id, from multiple executions. That function will
+        return the path of the last result
+        @return: the path of last result with the requested id or None
+        """
+        results = sorted(
+            filter(lambda item: item[1]['id'] == result_id, self.get_files_registry().items()),
+            key=lambda item: item[1]['result_counter']
+        )
+        if len(results) == 0:
+            return None
+        return results[-1][0]

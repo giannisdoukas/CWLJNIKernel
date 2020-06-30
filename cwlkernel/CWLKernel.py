@@ -15,7 +15,7 @@ from .CWLBuilder import CWLSnippetBuilder
 from .CWLExecuteConfigurator import CWLExecuteConfigurator
 from .CWLLogger import CWLLogger
 from .CoreExecutor import CoreExecutor
-from .IOManager import IOFileManager
+from .IOManager import IOFileManager, ResultsManager
 from .cwlrepository.CWLComponent import WorkflowComponentFactory, CWLWorkflow
 from .cwlrepository.cwlrepository import WorkflowRepository
 from .git.CWLGitResolver import CWLGitResolver
@@ -43,7 +43,7 @@ class CWLKernel(Kernel):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._yaml_input_data: Optional[str] = None
-        self._results_manager = IOFileManager(os.sep.join([CONF.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'results']))
+        self._results_manager = ResultsManager(os.sep.join([CONF.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'results']))
         runtime_file_manager = IOFileManager(os.sep.join([CONF.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'runtime_data']))
         self._cwl_executor = CoreExecutor(runtime_file_manager)
         self._pid = (os.getpid(), os.getppid())
@@ -156,9 +156,28 @@ class CWLKernel(Kernel):
     def _set_data(self, code: str) -> NoReturn:
         if len(code.split()) > 0:
             cwd = self._cwl_executor.file_manager.get_files_uri().path
-            self._cwl_executor.validate_input_files(yaml.load(code, Loader=yaml.Loader), cwd)
+            data = self._preprocess_data(yaml.load(code, Loader=yaml.Loader))
+
+            self._cwl_executor.validate_input_files(data, cwd)
             self._yaml_input_data = code
             self.send_response(self.iopub_socket, 'stream', {'name': 'stdout', 'text': 'Add data in memory'})
+
+    def _preprocess_data(self, data: Dict) -> Dict:
+        """
+        On the execution the user can reference the data id of a file instead of the actual path. That function
+        apply that logic
+
+        @param data: the actual data
+        @return the data after the transformation
+        """
+        for key_id in data:
+            if isinstance(data[key_id], dict) and \
+                    'class' in data[key_id] and \
+                    data[key_id]['class'] == 'File' and \
+                    '$data' in data[key_id]:
+                data[key_id]['location'] = self._results_manager.get_last_result_by_id(data['headinput']['$data'])
+                data[key_id].pop('$data')
+        return data
 
     def _clear_data(self):
         self._yaml_input_data = None

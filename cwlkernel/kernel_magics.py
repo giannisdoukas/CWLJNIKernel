@@ -3,25 +3,12 @@ import json
 import os
 import random
 from io import StringIO
-from typing import Optional
 
 from ruamel.yaml import YAML
 
 from .CWLKernel import CONF as CWLKernel_CONF
 from .CWLKernel import CWLKernel
-from .IOManager import IOFileManager
 from .cwlrepository.CWLComponent import CWLWorkflow, WorkflowComponent, WorkflowComponentFactory
-
-
-def _get_result_path(results_manager: IOFileManager, result_id: str) -> Optional[str]:
-    """Return the path of the result file or None."""
-    results = sorted(
-        filter(lambda item: item[1]['id'] == result_id, results_manager.get_files_registry().items()),
-        key=lambda item: item[1]['result_counter']
-    )
-    if len(results) == 0:
-        return None
-    return results[-1][0]
 
 
 @CWLKernel.register_magic
@@ -119,7 +106,7 @@ def display_data(kernel: CWLKernel, data_name: str) -> None:
             'ERROR: you must select an output to display. Correct format:\n % display_data [output name]'
         )
         return
-    result = _get_result_path(kernel._results_manager, data_name)
+    result = kernel._results_manager.get_last_result_by_id(data_name)
     if result is None:
         kernel.send_response(kernel.iopub_socket, 'stream', {'name': 'stderr', 'text': 'Result not found'})
         return
@@ -136,7 +123,7 @@ def display_data_csv(kernel: CWLKernel, data_name: str):
             'ERROR: you must select an output to display. Correct format:\n % display_data_csv [output name]'
         )
         return
-    result = _get_result_path(kernel._results_manager, data_name)
+    result = kernel._results_manager.get_last_result_by_id(data_name)
     if result is None:
         kernel._send_error_response('Result not found')
         return
@@ -167,7 +154,7 @@ def sample_csv(kernel: CWLKernel, args: str):
             '% sample_csv [output name] [percent size (0.5)]'
         )
         return
-    result = _get_result_path(kernel._results_manager, data_name)
+    result = kernel._results_manager.get_last_result_by_id(data_name)
     if result is None:
         kernel._send_error_response('Result not found')
         return
@@ -194,7 +181,7 @@ def display_data_image(kernel: CWLKernel, data_name: str):
             'ERROR: you must select an output to display. Correct format:\n % display_data [output name]'
         )
         return
-    result = _get_result_path(kernel._results_manager, data_name)
+    result = kernel._results_manager.get_last_result_by_id(data_name)
     if result is None:
         kernel._send_error_response('Result not found')
         return
