@@ -1,5 +1,5 @@
 appnope>=0.1.0
-git+https://github.com/giannisdoukas/cwltool.git@46a24ffccf1700449faea62962234a0edda50b65#egg=cwltool
+git+https://github.com/giannisdoukas/cwltool.git#egg=cwltool
 decorator>=4.4.1
 html5lib>=1.0.1
 ipython-genutils>=0.2.0

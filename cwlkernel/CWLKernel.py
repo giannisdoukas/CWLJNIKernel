@@ -155,8 +155,8 @@ class CWLKernel(Kernel):
 
     def _set_data(self, code: str) -> NoReturn:
         if len(code.split()) > 0:
-            cwl = self._cwl_executor.file_manager.get_files_uri().path
-            self._cwl_executor.validate_input_files(yaml.load(code, Loader=yaml.Loader), cwl)
+            cwd = self._cwl_executor.file_manager.get_files_uri().path
+            self._cwl_executor.validate_input_files(yaml.load(code, Loader=yaml.Loader), cwd)
             self._yaml_input_data = code
             self.send_response(self.iopub_socket, 'stream', {'name': 'stdout', 'text': 'Add data in memory'})
 
