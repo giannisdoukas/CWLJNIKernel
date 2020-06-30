@@ -68,7 +68,6 @@ class CoreExecutor:
     def validate_input_files(cls, yaml_input: Dict, cwd: Path) -> NoReturn:
         for arg in yaml_input:
             if isinstance(yaml_input[arg], dict) and 'class' in yaml_input[arg] and yaml_input[arg]['class'] == 'File':
-                # TODO: check about path vs location
                 selector = 'location' if 'location' in yaml_input[arg] else 'path'
                 file_path = Path(yaml_input[arg][selector])
                 if not file_path.is_absolute():

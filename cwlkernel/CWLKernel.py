@@ -3,6 +3,7 @@ import logging
 import os
 import re
 import traceback
+from io import StringIO
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple, Union, Callable, NoReturn
 
@@ -155,11 +156,12 @@ class CWLKernel(Kernel):
 
     def _set_data(self, code: str) -> NoReturn:
         if len(code.split()) > 0:
-            cwd = self._cwl_executor.file_manager.get_files_uri().path
+            cwd = Path(self._cwl_executor.file_manager.get_files_uri().path)
             data = self._preprocess_data(yaml.load(code, Loader=yaml.Loader))
-
             self._cwl_executor.validate_input_files(data, cwd)
-            self._yaml_input_data = code
+            code_stream = StringIO()
+            yaml.safe_dump(data, code_stream)
+            self._yaml_input_data = code_stream.getvalue()
             self.send_response(self.iopub_socket, 'stream', {'name': 'stdout', 'text': 'Add data in memory'})
 
     def _preprocess_data(self, data: Dict) -> Dict:
@@ -170,13 +172,19 @@ class CWLKernel(Kernel):
         @param data: the actual data
         @return the data after the transformation
         """
+
+        has_change = False
         for key_id in data:
             if isinstance(data[key_id], dict) and \
                     'class' in data[key_id] and \
                     data[key_id]['class'] == 'File' and \
                     '$data' in data[key_id]:
-                data[key_id]['location'] = self._results_manager.get_last_result_by_id(data['headinput']['$data'])
+                has_change = True
+                data[key_id]['location'] = self._results_manager.get_last_result_by_id(data[key_id]["$data"])
                 data[key_id].pop('$data')
+        if has_change is True:
+            self.send_text_to_stdout('set data to:\n')
+            self._send_json_response(data)
         return data
 
     def _clear_data(self):
