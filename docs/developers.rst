@@ -4,14 +4,14 @@ For Developers
 Custom Magic Commands Extensions
 ------------------------------------------------
 
-The kernel is designed to be able extendable. The methodology for creating extensions is inspired by `IPython's Magic
+The kernel is designed to be extendable. The methodology for creating extensions is inspired by `IPython's Magic
 Commands <https://ipython.readthedocs.io/en/stable/config/custommagics.html>`_. Developers can create new custom magic
 commands.
 
 Jupyter Notebook's cells that contain magic commands cannot contain CWL code. The magic command format is the following:
 :code:`% [command] [argument_string]`. The argument string is multiline and contains all the content after the
 magic command until the end of the cell or the next magic command. For example, at the following snippet, the first time
-the argument_string will contain as a single string the string from arg1 until the bar and at the second example, the
+the argument_string will contain as a single string, the string from arg1 until the bar and at the second example, the
 argument_string will be an empty string.
 
 
@@ -59,7 +59,7 @@ Inside the directory, we create the following file `hello.py`.
 
 
 The decorator is required to register the magic command to the kernel. Every magic command should have that signature.
-In case that the magic command does not accept any arguments, like in that case the argument string will be just an
+In case that the magic command does not accept any arguments, like in this case, the argument string will be just an
 empty string. Now, we can open a jupyter notebook and run the following command.
 
 .. code-block::
@@ -95,9 +95,9 @@ Advanced Example: Custom Magic Command
 ------------------------------------------------
 
 For custom magic commands with state and complex logic the object-oriented strategy is suggested.
-To do that you have to create a class to encapsulate the logic inside. The state has to be defined as a class attribute.
-The method's functionality which is mapped as magic commands should be defined as static methods and registered as
-magic commands with the decorator.
+To do that, you have to create a class to encapsulate the logic inside. The state has to be defined as a class attribute.
+The method's functionality, which is mapped to magic command, should be defined as a static method and registered as
+a magic command with the decorator.
 
 
 In the following tutorial, we present how to use some of Jupyter's features to build interactive commands.
@@ -112,15 +112,15 @@ a graph. Also, we want instead of printing the image multiple times to update th
 
 - add_node: add a new node in the graph
 - add_edge: add a new edge in the graph
-- bind_view: initialize the graph and bind the image display
+- bind_view: initialise the graph and bind the image display
 
 To do that we will use the `networkx <https://networkx.github.io/>`_ library and the
 `matplotlib <https://matplotlib.org/>`_.
 
 We assume that you have already set up a directory to add custom magic commands, as it is
-described in the :ref:`basic_magic_example`. In that directory lets create a file :code:`interactive.py`.
-In order to implement the requirements, we will create a class named BindGraph. The class has a state the
-graph that we want to visualize, the attribute named G, and a data_id which is required for updating the data
+described in the :ref:`basic_magic_example`. In that directory, lets create a file :code:`interactive.py`.
+In order to implement the requirements, we will create a class named BindGraph. The class has a state, the
+graph, that we want to visualise, the attribute named G, and a data_id which is required for updating the data
 to the notebook.
 
 .. code-block:: python
@@ -132,16 +132,16 @@ to the notebook.
 
 .. tip:: Technical Recommendation
 
-   The kernel is not aware of the sequence that the jupyter notebook's cells are but the kernel receives them in the order that the user executes them. For example, if in the jupyter notebook we have in the following cells
-   `% command1` and `% command2` the user, during his development, may execute them in different/wrong order. For
-   use cases that magic commands have common states, to handle better user's input, the usage of
+   The kernel is not aware of the sequence in which the jupyter notebook's cells are, but the kernel receives them in the order that the user executes them. For example, if in the jupyter notebook we have in the following cells
+   `% command1` and `% command2`, the user, during his development, may execute them in different/wrong order. For
+   use cases in which magic commands have common states, the usage of
    `builder pattern is suggested to be considered
    <https://www.tutorialspoint.com/python_design_patterns/python_design_patterns_builder.htm>`_.
 
 Firstly, we want to create a function for displaying new images or updating existing ones.
 To do that, we will use the API provided by jupyter notebook.
 In that function, we send from the kernel to the notebook a message including a display_id.
-This id is needed to be able to update the image when we request to.
+This id is needed to be able to update the image when we request it.
 So, we will define the following staticmethod:
 
 .. code-block:: python
@@ -168,8 +168,8 @@ So, we will define the following staticmethod:
       )
 
 
-Then we want to define the `bind_view` magic command. That command has to initialize the
-an empty graph and visualize, the empty, image.
+Then we want to define the `bind_view` magic command. That command has to initialise
+an empty graph and visualise the empty image.
 
 .. code-block:: python
 
@@ -197,8 +197,8 @@ The `get_image` is a staticmethod that we defined to convert the graph to an HTM
       return image
 
 
-The method for adding node & edge are very similar. For both of the cases firstly we update
-the graph based on users argument and then we generate the new image and we send a message for
+The methods for adding node & edge are very similar. For both of the cases, firstly we update
+the graph based on the user's argument and then we generate the new image and we send a message for
 update. Finally, we also send a message under the cell that the user requested to execute the command
 to inform him.
 
