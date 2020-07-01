@@ -3,6 +3,7 @@ import logging
 import os
 import re
 import traceback
+from io import StringIO
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple, Union, Callable, NoReturn
 
@@ -15,7 +16,7 @@ from .CWLBuilder import CWLSnippetBuilder
 from .CWLExecuteConfigurator import CWLExecuteConfigurator
 from .CWLLogger import CWLLogger
 from .CoreExecutor import CoreExecutor
-from .IOManager import IOFileManager
+from .IOManager import IOFileManager, ResultsManager
 from .cwlrepository.CWLComponent import WorkflowComponentFactory, CWLWorkflow
 from .cwlrepository.cwlrepository import WorkflowRepository
 from .git.CWLGitResolver import CWLGitResolver
@@ -43,7 +44,7 @@ class CWLKernel(Kernel):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._yaml_input_data: Optional[str] = None
-        self._results_manager = IOFileManager(os.sep.join([CONF.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'results']))
+        self._results_manager = ResultsManager(os.sep.join([CONF.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'results']))
         runtime_file_manager = IOFileManager(os.sep.join([CONF.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'runtime_data']))
         self._cwl_executor = CoreExecutor(runtime_file_manager)
         self._pid = (os.getpid(), os.getppid())
@@ -155,10 +156,36 @@ class CWLKernel(Kernel):
 
     def _set_data(self, code: str) -> NoReturn:
         if len(code.split()) > 0:
-            cwl = self._cwl_executor.file_manager.get_files_uri().path
-            self._cwl_executor.validate_input_files(yaml.load(code, Loader=yaml.Loader), cwl)
-            self._yaml_input_data = code
+            cwd = Path(self._cwl_executor.file_manager.get_files_uri().path)
+            data = self._preprocess_data(yaml.load(code, Loader=yaml.Loader))
+            self._cwl_executor.validate_input_files(data, cwd)
+            code_stream = StringIO()
+            yaml.safe_dump(data, code_stream)
+            self._yaml_input_data = code_stream.getvalue()
             self.send_response(self.iopub_socket, 'stream', {'name': 'stdout', 'text': 'Add data in memory'})
+
+    def _preprocess_data(self, data: Dict) -> Dict:
+        """
+        On the execution the user can reference the data id of a file instead of the actual path. That function
+        apply that logic
+
+        @param data: the actual data
+        @return the data after the transformation
+        """
+
+        has_change = False
+        for key_id in data:
+            if isinstance(data[key_id], dict) and \
+                    'class' in data[key_id] and \
+                    data[key_id]['class'] == 'File' and \
+                    '$data' in data[key_id]:
+                has_change = True
+                data[key_id]['location'] = self._results_manager.get_last_result_by_id(data[key_id]["$data"])
+                data[key_id].pop('$data')
+        if has_change is True:
+            self.send_text_to_stdout('set data to:\n')
+            self._send_json_response(data)
+        return data
 
     def _clear_data(self):
         self._yaml_input_data = None
@@ -210,6 +237,9 @@ class CWLKernel(Kernel):
         suggestions = self._auto_complete_engine.suggest(code, cursor_pos)
         self.log.debug(f'suggestions: {suggestions["matches"]}')
         return {**suggestions, 'status': 'ok'}
+
+    def send_text_to_stdout(self, text: str):
+        self.send_response(self.iopub_socket, 'stream', {'name': 'stdout', 'text': text})
 
 
 if __name__ == '__main__':
