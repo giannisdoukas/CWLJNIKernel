@@ -3,12 +3,13 @@ import json
 import os
 import random
 from io import StringIO
+from pathlib import Path
 
 from ruamel.yaml import YAML
 
 from .CWLKernel import CONF as CWLKernel_CONF
 from .CWLKernel import CWLKernel
-from .cwlrepository.CWLComponent import CWLWorkflow, WorkflowComponent, WorkflowComponentFactory
+from .cwlrepository.CWLComponent import CWLWorkflow, WorkflowComponentFactory
 
 
 @CWLKernel.register_magic
@@ -62,6 +63,18 @@ def newWorkflow(kernel: CWLKernel, workflow_id: str):
 
 @CWLKernel.register_magic
 def snippet(kernel: CWLKernel, command: str):
+    """
+    Submit a cwl workflow incrementally. Usage:
+    % snippet add
+    [...]
+    % snippet add
+    [...]
+    % snippet build
+
+    @param kernel:
+    @param command:
+    @return:
+    """
     command = command.splitlines()
     command[0] = command[0].strip()
     y = YAML(typ='rt')
@@ -85,7 +98,7 @@ def snippet(kernel: CWLKernel, command: str):
 def execute(kernel: CWLKernel, execute_argument_string: str):
     execute_argument_string = execute_argument_string.splitlines()
     cwl_id = execute_argument_string[0].strip()
-    cwl_component_path: WorkflowComponent = kernel.workflow_repository.get_tools_path_by_id(cwl_id)
+    cwl_component_path: Path = kernel.workflow_repository.get_tools_path_by_id(cwl_id)
     kernel._set_data('\n'.join(execute_argument_string[1:]))
     kernel._execute_workflow(cwl_component_path)
     kernel._clear_data()
