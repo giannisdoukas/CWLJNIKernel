@@ -96,21 +96,223 @@ Advanced Example: Custom Magic Command
 
 For custom magic commands with state and complex logic the object-oriented strategy is suggested.
 To do that you have to create a class to encapsulate the logic inside. The state has to be defined as a class attribute.
-The methods should be exposed as magic commands should be defined as static methods and registered as magic commands.
+The method's functionality which is mapped as magic commands should be defined as static methods and registered as
+magic commands with the decorator.
 
-In the following example, a set of magic commands are implemented to enable the user to create Research Objects.
 
-That example has an additional requirement the `rocrate library <https://github.com/ResearchObject/ro-crate-py>`_.
+In the following tutorial, we present how to use some of Jupyter's features to build interactive commands.
+Jupyter Notebook has a pub-sub communication channel to communicate with the kernel.
+There are multiple types of messages that the kernel can send to the notebook.
+For more information check `Jupyter's documentation for messaging
+<https://jupyter-client.readthedocs.io/en/stable/messaging.html>`_.
+
+In the presented tutorial we will use the `display_data` & `update_display_data` message types to illustrate
+how we can build interactive magic commands. Let's suppose that we want to build magic commands to create & visualise
+a graph. Also, we want instead of printing the image multiple times to update the initial one.
+
+- add_node: add a new node in the graph
+- add_edge: add a new edge in the graph
+- bind_view: initialize the graph and bind the image display
+
+To do that we will use the `networkx <https://networkx.github.io/>`_ library and the
+`matplotlib <https://matplotlib.org/>`_.
+
+We assume that you have already set up a directory to add custom magic commands, as it is
+described in the :ref:`basic_magic_example`. In that directory lets create a file :code:`interactive.py`.
+In order to implement the requirements, we will create a class named BindGraph. The class has a state the
+graph that we want to visualize, the attribute named G, and a data_id which is required for updating the data
+to the notebook.
+
+.. code-block:: python
+
+   class BindGraph:
+      G = None
+      data_id = '1234'
+
 
 .. tip:: Technical Recommendation
 
-   The kernel is not aware of the sequence that the jupyter notebook's cells are but the kernel receives them in the
-   order that the user executes them. For example, if in the jupyter notebook we have in the following cells
-   `% command1` and `% command2` the user, during his development may execute them in different/wrong order. For
-   use cases that magic commands have a coupled state, to handle better user's input, the usage of
+   The kernel is not aware of the sequence that the jupyter notebook's cells are but the kernel receives them in the order that the user executes them. For example, if in the jupyter notebook we have in the following cells
+   `% command1` and `% command2` the user, during his development, may execute them in different/wrong order. For
+   use cases that magic commands have common states, to handle better user's input, the usage of
    `builder pattern is suggested to be considered
    <https://www.tutorialspoint.com/python_design_patterns/python_design_patterns_builder.htm>`_.
 
+Firstly, we want to create a function for displaying new images or updating existing ones.
+To do that, we will use the API provided by jupyter notebook.
+In that function, we send from the kernel to the notebook a message including a display_id.
+This id is needed to be able to update the image when we request to.
+So, we will define the following staticmethod:
+
+.. code-block:: python
+
+   @staticmethod
+   def display_image(kernel: CWLKernel, image_html_tag: str, update: bool = False):
+      if update:
+         message_type = 'update_display_data'
+      else:
+         message_type = 'display_data'
+      kernel.send_response(
+         kernel.iopub_socket,
+         message_type,
+         {
+             'data': {
+                 "text/html": image_html_tag,
+                 "text/plain": f"{image_html_tag}"
+             },
+             'metadata': {},
+             'transient': {
+                 'display_id': BindGraph.data_id
+             }
+         }
+      )
+
+
+Then we want to define the `bind_view` magic command. That command has to initialize the
+an empty graph and visualize, the empty, image.
+
+.. code-block:: python
+
+   @staticmethod
+   @CWLKernel.register_magic
+   def bind_view(kernel: CWLKernel, arg: str):
+      BindGraph.G = nx.Graph()
+      image = BindGraph.get_image()
+      BindGraph.display_image(kernel, image)
+
+
+The `get_image` is a staticmethod that we defined to convert the graph to an HTML image tag.
+
+.. code-block:: python
+
+   @staticmethod
+   def get_image():
+      nx.draw(BindGraph.G, with_labels=True)
+      image_stream = BytesIO()
+      plt.savefig(image_stream)
+      image_base64 = base64.b64encode(image_stream.getvalue()).decode()
+      plt.clf()
+      mime = 'image/png'
+      image = f"""<image src="data:{mime}; base64, {image_base64}" alt="Graph">"""
+      return image
+
+
+The method for adding node & edge are very similar. For both of the cases firstly we update
+the graph based on users argument and then we generate the new image and we send a message for
+update. Finally, we also send a message under the cell that the user requested to execute the command
+to inform him.
+
+.. code-block:: python
+
+   @staticmethod
+   @CWLKernel.register_magic
+   def add_node(kernel: CWLKernel, arg: str):
+      BindGraph.G.add_node(arg)
+      image = BindGraph.get_image()
+      BindGraph.display_image(kernel, image, update=True)
+      kernel.send_text_to_stdout('Done!\n')
+
+   @staticmethod
+   @CWLKernel.register_magic
+   def add_edge(kernel: CWLKernel, arg: str):
+     edges = arg.split()
+     BindGraph.G.add_edge(*edges)
+     image = BindGraph.get_image()
+     BindGraph.display_image(kernel, image, update=True)
+     kernel.send_text_to_stdout('Done!\n')
+
+
+Finally, the full code will look like that:
+
+.. code-block:: python
+
+   import base64
+   import networkx as nx
+   import matplotlib.pyplot as plt
+   from cwlkernel.CWLKernel import CWLKernel
+   from io import BytesIO
+
+
+   class BindGraph:
+       G = None
+       data_id = '1234'
+
+       @staticmethod
+       def display_image(kernel: CWLKernel, image_html_tag: str, update: bool = False):
+           if update:
+               message_type = 'update_display_data'
+           else:
+               message_type = 'display_data'
+           kernel.send_response(
+               kernel.iopub_socket,
+               message_type,
+               {
+                   'data': {
+                       "text/html": image_html_tag,
+                       "text/plain": f"{image_html_tag}"
+                   },
+                   'metadata': {},
+                   'transient': {
+                       'display_id': BindGraph.data_id
+                   }
+               }
+           )
+
+       @staticmethod
+       @CWLKernel.register_magic
+       def add_node(kernel: CWLKernel, arg: str):
+           BindGraph.G.add_node(arg)
+           image = BindGraph.get_image()
+           BindGraph.display_image(kernel, image, update=True)
+           kernel.send_text_to_stdout('Done!\n')
+
+       @staticmethod
+       @CWLKernel.register_magic
+       def add_edge(kernel: CWLKernel, arg: str):
+           edges = arg.split()
+           BindGraph.G.add_edge(*edges)
+           image = BindGraph.get_image()
+           BindGraph.display_image(kernel, image, update=True)
+           kernel.send_text_to_stdout('Done!\n')
+
+       @staticmethod
+       def get_image():
+           nx.draw(BindGraph.G, with_labels=True)
+           image_stream = BytesIO()
+           plt.savefig(image_stream)
+           image_base64 = base64.b64encode(image_stream.getvalue()).decode()
+           plt.clf()
+           mime = 'image/png'
+           image = f"""<image src="data:{mime}; base64, {image_base64}" alt="Graph">"""
+           return image
+
+       @staticmethod
+       @CWLKernel.register_magic
+       def bind_view(kernel: CWLKernel, arg: str):
+           BindGraph.G = nx.Graph()
+           image = BindGraph.get_image()
+           BindGraph.display_image(kernel, image)
+
+       @staticmethod
+       def display_image(kernel: CWLKernel, image_html_tag: str, update: bool = False):
+           if update:
+               message_type = 'update_display_data'
+           else:
+               message_type = 'display_data'
+           kernel.send_response(
+               kernel.iopub_socket,
+               message_type,
+               {
+                   'data': {
+                       "text/html": image_html_tag,
+                       "text/plain": f"{image_html_tag}"
+                   },
+                   'metadata': {},
+                   'transient': {
+                       'display_id': BindGraph.data_id
+                   }
+               }
+           )
 
 
 Code Details
