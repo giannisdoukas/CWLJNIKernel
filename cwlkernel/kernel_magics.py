@@ -324,4 +324,4 @@ if CWLKernel_CONF.CWLKERNEL_MAGIC_COMMANDS_DIRECTORY is not None:
         if os.path.isfile(magic_file) and magic_file.endswith('.py'):
             print('external magic command imported', magic_file)
             with open(magic_file) as code:
-                exec(code.read())
+                exec(code.read())  # pylint: disable=exec-used

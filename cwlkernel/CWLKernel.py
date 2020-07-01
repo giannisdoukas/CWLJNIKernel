@@ -57,7 +57,7 @@ class CWLKernel(Kernel):
         self._workflow_composer: Optional[CWLWorkflow] = None
         self._github_resolver: CWLGitResolver = CWLGitResolver(
             Path(os.sep.join([CONF.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'git'])))
-        if self.log is None:
+        if self.log is None:  # pylint: disable=access-member-before-definition
             self.log = logging.getLogger()
 
     @classmethod

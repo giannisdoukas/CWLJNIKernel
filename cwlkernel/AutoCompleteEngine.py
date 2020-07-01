@@ -28,7 +28,7 @@ class AutoCompleteEngine:
             token = ''
         try:
             matches = list(set(self._commands_trie.values(prefix=token)))
-            matches.sort(key=lambda m: len(m))
+            matches.sort(key=len)
         except KeyError:
             matches = []
             cursor_end = cursor_pos
