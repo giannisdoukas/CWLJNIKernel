@@ -13,9 +13,9 @@ from .cwlrepository.CWLComponent import CWLWorkflow, WorkflowComponent, Workflow
 
 @CWLKernel.register_magic
 def newWorkflowBuild(kernel: CWLKernel, *args):
-    kernel._send_json_response(kernel._workflow_composer.to_dict())
-    kernel._workflow_repository.register_tool(kernel._workflow_composer)
-    kernel._workflow_composer = None
+    kernel.send_json_response(kernel.workflow_composer.to_dict())
+    kernel.workflow_repository.register_tool(kernel.workflow_composer)
+    kernel.workflow_composer = None
 
 
 @CWLKernel.register_magic
@@ -25,7 +25,7 @@ def newWorkflowAddInput(kernel: CWLKernel, args: str):
     step_id, step_in_id = args[0].split()
     input_description = '\n'.join(args[1:])
     input_description = y.safe_load(StringIO(input_description))
-    kernel._workflow_composer.add_input(
+    kernel.workflow_composer.add_input(
         workflow_input=input_description,
         step_id=step_id.strip(),
         in_step_id=step_in_id.strip())
@@ -39,25 +39,25 @@ def newWorkflowAddStepIn(kernel: CWLKernel, args: str):
     import yaml as y
     input_description = y.safe_load(StringIO(input_description))
     for input_id, description in input_description.items():
-        kernel._workflow_composer.add_step_in_out(description, input_id, *step_in_args)
+        kernel.workflow_composer.add_step_in_out(description, input_id, *step_in_args)
 
 
 @CWLKernel.register_magic
 def newWorkflowAddStep(kernel: CWLKernel, ids: str):
     tool_id, step_id = ids.split()
-    tool = kernel._workflow_repository.get_by_id(tool_id)
-    kernel._workflow_composer.add(tool, step_id)
+    tool = kernel.workflow_repository.get_by_id(tool_id)
+    kernel.workflow_composer.add(tool, step_id)
 
 
 @CWLKernel.register_magic
 def newWorkflowAddOutputSource(kernel: CWLKernel, args: str):
     reference, type_of = args.split()
-    kernel._workflow_composer.add_output_source(reference, type_of)
+    kernel.workflow_composer.add_output_source(reference, type_of)
 
 
 @CWLKernel.register_magic
 def newWorkflow(kernel: CWLKernel, workflow_id: str):
-    kernel._workflow_composer = CWLWorkflow(workflow_id)
+    kernel.workflow_composer = CWLWorkflow(workflow_id)
 
 
 @CWLKernel.register_magic
@@ -73,19 +73,19 @@ def snippet(kernel: CWLKernel, command: str):
         snippet = '\n'.join(command[1:])
         kernel._snippet_builder.append(snippet)
         workflow = kernel._snippet_builder.build()
-        kernel._workflow_repository.register_tool(workflow)
+        kernel.workflow_repository.register_tool(workflow)
         current_code = y.load(StringIO(kernel._snippet_builder.get_current_code()))
         kernel._snippet_builder.clear()
     else:
         raise ValueError()
-    kernel._send_json_response(current_code)
+    kernel.send_json_response(current_code)
 
 
 @CWLKernel.register_magic
 def execute(kernel: CWLKernel, execute_argument_string: str):
     execute_argument_string = execute_argument_string.splitlines()
     cwl_id = execute_argument_string[0].strip()
-    cwl_component_path: WorkflowComponent = kernel._workflow_repository.get_tools_path_by_id(cwl_id)
+    cwl_component_path: WorkflowComponent = kernel.workflow_repository.get_tools_path_by_id(cwl_id)
     kernel._set_data('\n'.join(execute_argument_string[1:]))
     kernel._execute_workflow(cwl_component_path)
     kernel._clear_data()
@@ -102,11 +102,11 @@ def display_data(kernel: CWLKernel, data_name: str) -> None:
     @return None
     """
     if not isinstance(data_name, str) or len(data_name.split()) == 0:
-        kernel._send_error_response(
+        kernel.send_error_response(
             'ERROR: you must select an output to display. Correct format:\n % display_data [output name]'
         )
         return
-    result = kernel._results_manager.get_last_result_by_id(data_name)
+    result = kernel.results_manager.get_last_result_by_id(data_name)
     if result is None:
         kernel.send_response(kernel.iopub_socket, 'stream', {'name': 'stderr', 'text': 'Result not found'})
         return
@@ -119,13 +119,13 @@ def display_data(kernel: CWLKernel, data_name: str) -> None:
 def display_data_csv(kernel: CWLKernel, data_name: str):
     import pandas as pd
     if not isinstance(data_name, str) or len(data_name.split()) == 0:
-        kernel._send_error_response(
+        kernel.send_error_response(
             'ERROR: you must select an output to display. Correct format:\n % display_data_csv [output name]'
         )
         return
-    result = kernel._results_manager.get_last_result_by_id(data_name)
+    result = kernel.results_manager.get_last_result_by_id(data_name)
     if result is None:
-        kernel._send_error_response('Result not found')
+        kernel.send_error_response('Result not found')
         return
 
     df = pd.read_csv(result, header=None)
@@ -149,14 +149,14 @@ def sample_csv(kernel: CWLKernel, args: str):
         data_name, sample_percent = args.split()
         sample_percent = float(sample_percent)
     except Exception:
-        kernel._send_error_response(
+        kernel.send_error_response(
             'ERROR: you must select an output to display. Correct format:\n '
             '% sample_csv [output name] [percent size (0.5)]'
         )
         return
-    result = kernel._results_manager.get_last_result_by_id(data_name)
+    result = kernel.results_manager.get_last_result_by_id(data_name)
     if result is None:
-        kernel._send_error_response('Result not found')
+        kernel.send_error_response('Result not found')
         return
 
     df = pd.read_csv(result, header=None, skiprows=lambda i: i > 0 and random.random() > sample_percent)
@@ -177,13 +177,13 @@ def sample_csv(kernel: CWLKernel, args: str):
 def display_data_image(kernel: CWLKernel, data_name: str):
     import base64
     if not isinstance(data_name, str) or len(data_name.split()) == 0:
-        kernel._send_error_response(
+        kernel.send_error_response(
             'ERROR: you must select an output to display. Correct format:\n % display_data [output name]'
         )
         return
-    result = kernel._results_manager.get_last_result_by_id(data_name)
+    result = kernel.results_manager.get_last_result_by_id(data_name)
     if result is None:
-        kernel._send_error_response('Result not found')
+        kernel.send_error_response('Result not found')
         return
 
     kernel.log.debug(result)
@@ -270,18 +270,18 @@ def githubImport(kernel: CWLKernel, url: str):
         with open(cwl_file) as f:
             file_data = f.read()
         cwl_component = cwl_factory.get_workflow_component(file_data)
-        kernel._workflow_repository.register_tool(cwl_component)
+        kernel.workflow_repository.register_tool(cwl_component)
         kernel.send_response(kernel.iopub_socket, 'stream',
                              {'name': 'stdout', 'text': f"tool '{cwl_component.id}' registered\n"})
 
 
 @CWLKernel.register_magic
 def viewTool(kernel: CWLKernel, workflow_id: str):
-    workflow = kernel._workflow_repository.__repo__.get_by_id(workflow_id)
+    workflow = kernel.workflow_repository.__repo__.get_by_id(workflow_id)
     if workflow is not None:
-        kernel._send_json_response(workflow.to_dict())
+        kernel.send_json_response(workflow.to_dict())
     else:
-        kernel._send_error_response(f"Tool '{workflow_id}' is not registered")
+        kernel.send_error_response(f"Tool '{workflow_id}' is not registered")
 
 
 @CWLKernel.register_magic
