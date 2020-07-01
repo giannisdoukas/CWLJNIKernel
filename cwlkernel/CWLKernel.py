@@ -60,8 +60,29 @@ class CWLKernel(Kernel):
         if self.log is None:  # pylint: disable=access-member-before-definition
             self.log = logging.getLogger()
 
+    @property
+    def workflow_repository(self) -> WorkflowRepository:
+        return self._workflow_repository
+
+    @property
+    def results_manager(self) -> ResultsManager:
+        return self._results_manager
+
+    @property
+    def workflow_composer(self) -> CWLWorkflow:
+        return self._workflow_composer
+
+    @workflow_composer.setter
+    def workflow_composer(self, composer=Optional[CWLWorkflow]):
+        self._workflow_composer = composer
+
     @classmethod
     def register_magic(cls, magic: Callable):
+        """
+        Registers magic commands. That method should be used as a decorator to register custom magic commands.
+        @param magic: The magic command to register
+        @return: the magic function
+        """
         cls._magic_commands[magic.__name__] = magic
         cls._auto_complete_engine.add_magic_command(magic.__name__)
         return magic
@@ -102,7 +123,7 @@ class CWLKernel(Kernel):
         except Exception as e:
             status = 'error'
             traceback.print_exc()
-            self._send_error_response(f'{type(e).__name__}: {e}')
+            self.send_error_response(f'{type(e).__name__}: {e}')
         finally:
             return {
                 'status': status,
@@ -133,10 +154,20 @@ class CWLKernel(Kernel):
             args = " ".join(command[1:])
             self._magic_commands[command_name](self, args)
 
-    def _send_error_response(self, text):
+    def send_error_response(self, text) -> None:
+        """
+        Sends a response to the jupyter notebook's stderr.
+        @param text: The message to display
+        @return: None
+        """
         self.send_response(self.iopub_socket, 'stream', {'name': 'stderr', 'text': text})
 
-    def _send_json_response(self, json_data: Union[Dict, List]):
+    def send_json_response(self, json_data: Union[Dict, List]) -> None:
+        """
+        Display a Dict or a List object as a JSON. The object must be json dumpable to use that function.
+        @param json_data: Data to print in Jupyter Notebook
+        @return: None
+        """
         self.send_response(
             self.iopub_socket,
             'display_data',
@@ -184,7 +215,7 @@ class CWLKernel(Kernel):
                 data[key_id].pop('$data')
         if has_change is True:
             self.send_text_to_stdout('set data to:\n')
-            self._send_json_response(data)
+            self.send_json_response(data)
         return data
 
     def _clear_data(self):
@@ -216,7 +247,7 @@ class CWLKernel(Kernel):
                     output_directory_for_that_run,
                     metadata=results[output]
                 )
-        self._send_json_response(results)
+        self.send_json_response(results)
         if exception is not None:
             self.log.debug(f'execution error: {exception}')
             self.send_response(self.iopub_socket, 'stream', {'name': 'stderr', 'text': str(exception)})
