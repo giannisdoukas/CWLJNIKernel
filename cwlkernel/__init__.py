@@ -1,4 +1,5 @@
 # noinspection PyUnresolvedReferences
 from . import kernel_magics  # NOQA
+from .CWLKernel import version
 
-__version__ = "0.0.2"
+__version__ = version

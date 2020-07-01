@@ -7,11 +7,13 @@ from typing import Dict, Tuple, Callable
 class CWLExecuteConfigurator:
     CWLKERNEL_MODE: str
     CWLKERNEL_BOOT_DIRECTORY: str
+    CWLKERNEL_MAGIC_COMMANDS_DIRECTORY: str
 
     # property "Name of the property": ("default", validator)
     properties: Dict[str, Tuple[str, Callable]] = {
         'CWLKERNEL_MODE': ('SIMPLE', lambda value: value.upper() in {'SIMPLE'}),  # no case sensitive
-        'CWLKERNEL_BOOT_DIRECTORY': ('/tmp/CWLKERNEL_DATA', lambda value: True)
+        'CWLKERNEL_BOOT_DIRECTORY': ('/tmp/CWLKERNEL_DATA', lambda value: True),
+        'CWLKERNEL_MAGIC_COMMANDS_DIRECTORY': (None, lambda value: value is None or os.path.isdir(value))
     }
 
     def __init__(self):

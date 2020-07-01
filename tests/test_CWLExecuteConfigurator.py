@@ -1,5 +1,6 @@
-import unittest
 import os
+import unittest
+
 from cwlkernel.CWLExecuteConfigurator import CWLExecuteConfigurator
 
 
@@ -29,7 +30,7 @@ class TestCWLExecuteConfigurator(unittest.TestCase):
     def test_all_properties_have_default_value(self):
         conf = CWLExecuteConfigurator()
         for property in conf.properties:
-            self.assertIsNotNone(conf.__getattribute__(property))
+            self.assertTrue(conf.properties[property][1](conf.__getattribute__(property)))
 
     def tearDown(self) -> None:
         try:
