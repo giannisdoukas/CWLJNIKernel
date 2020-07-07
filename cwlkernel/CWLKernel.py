@@ -84,8 +84,12 @@ class CWLKernel(Kernel):
         @return: the magic function
         """
         cls._magic_commands[magic.__name__] = magic
-        cls._auto_complete_engine.add_magic_command(magic.__name__)
+        cls._auto_complete_engine.add_magic_command(magic)
         return magic
+
+    @classmethod
+    def register_magics_suggester(cls, magic_command_name: str, suggester: Callable):
+        cls._auto_complete_engine.add_magic_commands_suggester(magic_command_name, suggester)
 
     def _set_process_ids(self):
         self._cwl_logger.process_id = {
