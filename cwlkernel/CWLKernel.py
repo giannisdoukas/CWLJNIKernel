@@ -78,7 +78,8 @@ class CWLKernel(Kernel):
 
     class register_magic:
         """Registers magic commands. That method should be used as a decorator to register custom magic commands."""
-        def __init__(self, magics_name: Optional[str]=None):
+
+        def __init__(self, magics_name: Optional[str] = None):
             self._magics_name = magics_name
 
         def __call__(self, magic: Callable):
