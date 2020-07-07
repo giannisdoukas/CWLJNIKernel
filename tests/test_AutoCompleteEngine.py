@@ -8,7 +8,7 @@ class TestAutoCompleteEngine(unittest.TestCase):
     maxDiff = None
 
     def test_suggest_magics(self):
-        auto_complete_engine = AutoCompleteEngine(CWLKernel._magic_commands.values())
+        auto_complete_engine = AutoCompleteEngine(CWLKernel._magic_commands.keys())
         code = "NOT EXISTING CONTENT"
         self.assertDictEqual(
             {'matches': [], 'cursor_start': len(code) - 1,
@@ -50,10 +50,11 @@ class TestAutoCompleteEngine(unittest.TestCase):
 
     def test_suggest_magics_args(self):
         auto_complete_engine = CWLKernel._auto_complete_engine
-        CWLKernel.register_magics_suggester(
-            'execute',
-            lambda *args, **kwargs: ['foo', 'bar', 'foobar']
-        )
+
+        @CWLKernel.register_magics_suggester('execute')
+        def suggester1(*args, **kwargs):
+            return ['foo', 'bar', 'foobar']
+
         code = "% execute "
         self.assertDictEqual(
             {'matches': ['foo', 'bar', 'foobar'], 'cursor_start': len(code),
@@ -61,13 +62,12 @@ class TestAutoCompleteEngine(unittest.TestCase):
             auto_complete_engine.suggest(code, len(code))
         )
 
-        CWLKernel.register_magics_suggester(
-            'execute',
-            lambda query_token: [
+        @CWLKernel.register_magics_suggester('execute')
+        def suggester2(query_token, *args, **kwargs):
+            return [
                 x for x in ['foo', 'bar', 'foobar']
                 if x.upper().startswith(query_token.upper())
             ]
-        )
         code = "% execute f"
         self.assertDictEqual(
             {'matches': ['foo', 'foobar'], 'cursor_start': 10,

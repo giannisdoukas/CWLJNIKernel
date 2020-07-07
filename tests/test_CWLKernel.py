@@ -798,7 +798,7 @@ number_of_lines: 15""")
         os.environ['CWLKERNEL_MAGIC_COMMANDS_DIRECTORY'] = tmp_magic_dir
         m1_code = os.linesep.join([
             "from cwlkernel.CWLKernel import CWLKernel",
-            "@CWLKernel.register_magic",
+            "@CWLKernel.register_magic()",
             "def m1(*args, **kwards):",
             "\tmsg = 'm1 magic function'",
             "\tprint(msg)",
@@ -808,7 +808,7 @@ number_of_lines: 15""")
             f.write(m1_code)
         m2_code = os.linesep.join([
             "from cwlkernel.CWLKernel import CWLKernel",
-            "@CWLKernel.register_magic",
+            "@CWLKernel.register_magic()",
             "def m2(*args, **kwards):",
             "\tmsg = 'm2 magic function'",
             "\tprint(msg)",

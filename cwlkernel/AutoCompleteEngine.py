@@ -9,7 +9,7 @@ class AutoCompleteEngine:
     AutoCompleteEngine generates suggestions given a users input.
     """
 
-    def __init__(self, magic_commands: Optional[Iterable[Callable]]):
+    def __init__(self, magic_commands: Optional[Iterable[str]]):
         self._magics_args_suggesters: Dict[str, Callable] = {}
         self._commands_trie = CharTrie()
         if magic_commands is not None:
@@ -54,7 +54,7 @@ class AutoCompleteEngine:
         if token == '%':
             token = ''
         try:
-            matches = [m.__name__ for m in set(self._commands_trie.values(prefix=token))]
+            matches = [m for m in set(self._commands_trie.values(prefix=token))]
             matches.sort(key=len)
         except KeyError:
             matches = []
@@ -87,6 +87,6 @@ class AutoCompleteEngine:
         token = code[token_starts_at:token_ends_at + 1].strip().upper()
         return cursor_end, cursor_start, token
 
-    def add_magic_command(self, magic_command: Callable):
-        for i in range(1, len(magic_command.__name__) + 1):
-            self._commands_trie[magic_command.__name__[-i:].upper()] = magic_command
+    def add_magic_command(self, magic_command_name: str):
+        for i in range(1, len(magic_command_name) + 1):
+            self._commands_trie[magic_command_name[-i:].upper()] = magic_command_name

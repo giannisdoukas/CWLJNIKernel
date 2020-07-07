@@ -39,7 +39,7 @@ class CWLKernel(Kernel):
     banner = "Common Workflow Language"
 
     _magic_commands: Dict = {}
-    _auto_complete_engine = AutoCompleteEngine(_magic_commands)
+    _auto_complete_engine = AutoCompleteEngine(_magic_commands.keys())
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -76,20 +76,26 @@ class CWLKernel(Kernel):
     def workflow_composer(self, composer=Optional[CWLWorkflow]):
         self._workflow_composer = composer
 
-    @classmethod
-    def register_magic(cls, magic: Callable):
-        """
-        Registers magic commands. That method should be used as a decorator to register custom magic commands.
-        @param magic: The magic command to register
-        @return: the magic function
-        """
-        cls._magic_commands[magic.__name__] = magic
-        cls._auto_complete_engine.add_magic_command(magic)
-        return magic
+    class register_magic:
+        """Registers magic commands. That method should be used as a decorator to register custom magic commands."""
+        def __init__(self, magics_name: Optional[str]=None):
+            self._magics_name = magics_name
 
-    @classmethod
-    def register_magics_suggester(cls, magic_command_name: str, suggester: Callable):
-        cls._auto_complete_engine.add_magic_commands_suggester(magic_command_name, suggester)
+        def __call__(self, magic: Callable):
+            magics_name = self._magics_name if self._magics_name is not None else magic.__name__
+            CWLKernel._magic_commands[magics_name] = magic
+            CWLKernel._auto_complete_engine.add_magic_command(magic.__name__)
+            return magic
+
+    class register_magics_suggester:
+        """Decorator for registering functions for suggesting commands line arguments"""
+
+        def __init__(self, magic_command_name: str):
+            self._magic_command_name = magic_command_name
+
+        def __call__(self, suggester):
+            CWLKernel._auto_complete_engine.add_magic_commands_suggester(self._magic_command_name, suggester)
+            return suggester
 
     def _set_process_ids(self):
         self._cwl_logger.process_id = {
