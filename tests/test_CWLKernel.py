@@ -171,13 +171,13 @@ class TestCWLKernel(unittest.TestCase):
             kernel.do_execute(data, False)
         )
 
-        kernel.do_execute('% display_data')
+        kernel.do_execute('% displayData')
         self.assertEqual(
-            'ERROR: you must select an output to display. Correct format:\n % display_data [output name]',
+            'ERROR: you must select an output to display. Correct format:\n % displayData [output name]',
             responses[-1][0][2]['text']
         )
 
-        kernel.do_execute('% display_data echo_output')
+        kernel.do_execute('% displayData echo_output')
         self.assertEqual(
             'Hello world!\n',
             responses[-1][0][2]['text']
@@ -189,7 +189,7 @@ class TestCWLKernel(unittest.TestCase):
         )
         self.assertEqual(
             {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
-            kernel.do_execute('% display_data echo_output')
+            kernel.do_execute('% displayData echo_output')
         )
         self.assertEqual(
             'Hello world!\n',
@@ -716,7 +716,7 @@ query: id""")
 
         self.assertDictEqual(
             {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
-            kernel.do_execute(f"""% display_data_csv no-existing""")
+            kernel.do_execute(f"""% displayDataCSV no-existing""")
         )
         self.assertEqual(
             'Result not found',
@@ -741,7 +741,7 @@ number_of_lines: 15""")
 
         self.assertDictEqual(
             {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
-            kernel.do_execute("% display_data_csv headoutput")
+            kernel.do_execute("% displayDataCSV headoutput")
         )
 
         self.assertListEqual(
@@ -757,7 +757,7 @@ number_of_lines: 15""")
 
         self.assertDictEqual(
             {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
-            kernel.do_execute(f"""% display_data_csv no-existing""")
+            kernel.do_execute(f"""% displayDataCSV no-existing""")
         )
         self.assertEqual(
             'Result not found',
@@ -782,7 +782,7 @@ number_of_lines: 15""")
 
         self.assertDictEqual(
             {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
-            kernel.do_execute("% sample_csv headoutput 0.2")
+            kernel.do_execute("% sampleCSV headoutput 0.2")
         )
 
         shape = pd.read_html(responses[-1][0][2]['data']['text/html'], header=None)[0].shape
