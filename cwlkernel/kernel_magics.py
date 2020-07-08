@@ -4,7 +4,7 @@ import os
 import random
 from io import StringIO
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
 from ruamel.yaml import YAML
 
@@ -96,12 +96,10 @@ def snippet(kernel: CWLKernel, command: str):
 
 
 class ExecutionMagics:
-    _kernel: Optional[CWLKernel] = None
 
     @staticmethod
     @CWLKernel.register_magic()
     def execute(kernel: CWLKernel, execute_argument_string: str):
-        ExecutionMagics._kernel = kernel
         execute_argument_string = execute_argument_string.splitlines()
         cwl_id = execute_argument_string[0].strip()
         cwl_component_path: Path = kernel.workflow_repository.get_tools_path_by_id(cwl_id)
@@ -114,7 +112,7 @@ class ExecutionMagics:
     def suggest_execution_id(query_token: str, *args, **kwargs) -> List[str]:
         return [
             command for command in
-            ExecutionMagics._kernel._workflow_repository._registry.keys()
+            CWLKernel.instance()._workflow_repository._registry.keys()
             if command.upper().startswith(query_token.upper())
         ]
 

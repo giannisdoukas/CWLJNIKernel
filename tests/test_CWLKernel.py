@@ -32,6 +32,7 @@ class TestCWLKernel(unittest.TestCase):
 
     def setUp(self) -> None:
         import tempfile
+        CWLKernel.clear_instance()
         WorkflowRepository(Path(tempfile.mkdtemp()))
         WorkflowRepository.get_instance().delete()
 
