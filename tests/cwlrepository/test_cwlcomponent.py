@@ -9,12 +9,16 @@ from pathlib import Path
 import yaml
 
 from cwlkernel.CWLExecuteConfigurator import CWLExecuteConfigurator
+from cwlkernel.CWLKernel import CWLKernel
 from cwlkernel.cwlrepository.CWLComponent import WorkflowComponent, CWLTool, CWLWorkflow, WorkflowComponentFactory
 from cwlkernel.cwlrepository.cwlrepository import WorkflowRepository
 
 
 class CWLComponentTest(unittest.TestCase):
     maxDiff = None
+
+    def setUp(self) -> None:
+        CWLKernel.clear_instance()
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -267,18 +271,22 @@ class CWLComponentTest(unittest.TestCase):
         conf = CWLExecuteConfigurator()
         location = os.sep.join([conf.CWLKERNEL_BOOT_DIRECTORY, str(uuid.uuid4()), 'repo'])
         repo = WorkflowRepository(Path(location))
-        head_tool: WorkflowComponent = CWLTool('head', {'class': 'CommandLineTool',
-                                                        'cwlVersion': 'v1.0',
-                                                        'id': 'head',
-                                                        'baseCommand': ['head'],
-                                                        'inputs': [{'id': 'number_of_lines',
-                                                                    'type': 'int?',
-                                                                    'inputBinding': {'position': 0, 'prefix': '-n'}},
-                                                                   {'id': 'headinput', 'type': 'File',
-                                                                    'inputBinding': {'position': 1}}],
-                                                        'outputs': [{'id': 'headoutput', 'type': 'stdout'}],
-                                                        'label': 'head',
-                                                        'stdout': 'head.out'})
+        head_tool: WorkflowComponent = CWLTool(
+            'head',
+            {
+                'class': 'CommandLineTool',
+                'cwlVersion': 'v1.0',
+                'id': 'head',
+                'baseCommand': ['head'],
+                'inputs': [{'id': 'number_of_lines',
+                            'type': 'int?',
+                            'inputBinding': {'position': 0, 'prefix': '-n'}},
+                           {'id': 'headinput', 'type': 'File',
+                            'inputBinding': {'position': 1}}],
+                'outputs': [{'id': 'headoutput', 'type': 'stdout'}],
+                'label': 'head',
+                'stdout': 'head.out'}
+        )
         repo.register_tool(head_tool)
         self.assertEqual(os.path.realpath(repo.get_tools_path_by_id('head').absolute()),
                          os.path.realpath(os.path.join(location, 'head.cwl')))

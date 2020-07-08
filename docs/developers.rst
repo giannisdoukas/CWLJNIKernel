@@ -49,7 +49,7 @@ Inside the directory, we create the following file `hello.py`.
 
    from cwlkernel.CWLKernel import CWLKernel
 
-   @CWLKernel.register_magic
+   @CWLKernel.register_magic()
    def hello(kernel: CWLKernel, argument_string: str):
        kernel.send_response(
            kernel.iopub_socket,
@@ -76,7 +76,7 @@ example, the aforementioned example could be changed to:
    from cwlkernel.CWLKernel import CWLKernel
    import argparse
 
-   @CWLKernel.register_magic
+   @CWLKernel.register_magic()
    def hello(kernel: CWLKernel, argument_string: str):
        parser = argparse.ArgumentParser()
        parser.add_argument(
@@ -174,7 +174,7 @@ an empty graph and visualise the empty image.
 .. code-block:: python
 
    @staticmethod
-   @CWLKernel.register_magic
+   @CWLKernel.register_magic()
    def bind_view(kernel: CWLKernel, arg: str):
       BindGraph.G = nx.Graph()
       image = BindGraph.get_image()
@@ -205,7 +205,7 @@ to inform him.
 .. code-block:: python
 
    @staticmethod
-   @CWLKernel.register_magic
+   @CWLKernel.register_magic()
    def add_node(kernel: CWLKernel, arg: str):
       BindGraph.G.add_node(arg)
       image = BindGraph.get_image()
@@ -213,7 +213,7 @@ to inform him.
       kernel.send_text_to_stdout('Done!\n')
 
    @staticmethod
-   @CWLKernel.register_magic
+   @CWLKernel.register_magic()
    def add_edge(kernel: CWLKernel, arg: str):
      edges = arg.split()
      BindGraph.G.add_edge(*edges)
@@ -259,7 +259,7 @@ Finally, the full code will look like that:
            )
 
        @staticmethod
-       @CWLKernel.register_magic
+       @CWLKernel.register_magic()
        def add_node(kernel: CWLKernel, arg: str):
            BindGraph.G.add_node(arg)
            image = BindGraph.get_image()
@@ -267,7 +267,7 @@ Finally, the full code will look like that:
            kernel.send_text_to_stdout('Done!\n')
 
        @staticmethod
-       @CWLKernel.register_magic
+       @CWLKernel.register_magic()
        def add_edge(kernel: CWLKernel, arg: str):
            edges = arg.split()
            BindGraph.G.add_edge(*edges)
@@ -287,7 +287,7 @@ Finally, the full code will look like that:
            return image
 
        @staticmethod
-       @CWLKernel.register_magic
+       @CWLKernel.register_magic()
        def bind_view(kernel: CWLKernel, arg: str):
            BindGraph.G = nx.Graph()
            image = BindGraph.get_image()
