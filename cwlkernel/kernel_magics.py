@@ -6,6 +6,9 @@ from io import StringIO
 from pathlib import Path
 from typing import List
 
+import pydot
+from cwltool.cwlviewer import CWLViewer
+from cwltool.main import main as cwltool_main
 from ruamel.yaml import YAML
 
 from .CWLKernel import CONF as CWLKernel_CONF
@@ -340,6 +343,33 @@ def magics(kernel: CWLKernel, arg: str):
             kernel.send_text_to_stdout(
                 'The function does not provide documentation'
             )
+
+
+@CWLKernel.register_magic('view')
+def visualize_graph(kernel: CWLKernel, tool_id: str):
+    """Visualize a Workflow"""
+    tool_id = tool_id.strip()
+    path = kernel.workflow_repository.get_tools_path_by_id(tool_id)
+    rdf_stream = StringIO()
+    import logging
+    handler = logging.StreamHandler()
+    cwltool_main(['--print-rdf', os.path.abspath(path)], stdout=rdf_stream, logger_handler=handler)
+    cwl_viewer = CWLViewer(rdf_stream.getvalue())
+    (dot_object,) = pydot.graph_from_dot_data(cwl_viewer.dot())
+    image = dot_object.create('dot', 'svg')
+
+    kernel.send_response(
+        kernel.iopub_socket,
+        'display_data',
+        {
+            'data': {
+                "image/svg+xml": image.decode(),
+                "text/plain": image.decode()
+            },
+            'metadata': {},
+        },
+
+    )
 
 
 # import user's magic commands

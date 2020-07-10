@@ -6,8 +6,11 @@ python:
 os:
   - linux
 before_install:
+  - sudo apt-get update
+  - sudo apt-get install graphviz
   - python --version
 install:
+  - pip install -r requirements.txt
   - pip install -r test-requirements.txt
   - python setup.py install
 # command to run tests
@@ -23,6 +26,7 @@ matrix:
       osx_image: xcode9.4  # Python 3.7 running on macOS 10.13
       language: shell  # 'language: python' is an error on Travis CI macOS
       before_install:
+        - brew install graphviz
         - python3 --version
         - pip3 install virtualenv
         - virtualenv -p python3 venv

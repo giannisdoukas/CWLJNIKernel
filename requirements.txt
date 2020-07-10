@@ -1,4 +1,4 @@
-cwltool>=3.0.20200706173533
+git+https://github.com/giannisdoukas/cwltool.git@cwl-view#egg=cwltool
 jsonschema>=3.2.0
 jupyter-client>=5.3.4
 jupyter-core>=4.6.3
@@ -9,3 +9,4 @@ pandas>=1.0.4
 notebook>=6.0.3
 requests>=2.23.0
 pygtrie>=2.3.3
+pydot>=1.4.1
