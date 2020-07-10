@@ -844,7 +844,6 @@ number_of_lines: 15""")
         commands = [f'\t- {cmd}' for cmd in kernel._magic_commands.keys()]
         commands.sort()
 
-
         self.assertDictEqual(
             {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
             kernel.do_execute(f"""% magics""")
@@ -866,6 +865,73 @@ number_of_lines: 15""")
         )
         self.assertIn(' '.join('Display all the data which are registered in the kernel session.'.split()),
                       ' '.join(responses[-1][0][2]['text'].split()))
+
+    def test_view_magic_command(self):
+        kernel = CWLKernel()
+        # cancel send_response
+        responses = []
+        kernel.send_response = lambda *args, **kwargs: responses.append((args, kwargs))
+        with open(os.sep.join([self.cwl_directory, 'head.cwl'])) as f:
+            head = f.read()
+        with open(os.sep.join([self.cwl_directory, 'tail.cwl'])) as f:
+            tail = f.read()
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(head)
+        )
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(tail)
+        )
+
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute("""% newWorkflow main
+% newWorkflowAddStep tail tailstepid
+% newWorkflowAddStep head headstepid
+% newWorkflowAddInput headstepid headinput
+id: inputfile
+type: File
+% newWorkflowAddStepIn tailstepid headstepid headoutput
+tailinput: headstepid/headoutput
+% newWorkflowAddOutputSource tailstepid/tailoutput File
+% newWorkflowBuild""")
+        )
+
+        self.assertDictEqual(
+            {
+                "cwlVersion": "v1.0",
+                "class": "Workflow",
+                "id": "main",
+                "inputs": [{'id': 'inputfile', 'type': 'File'}],
+                "outputs": [{'id': 'tailoutput', 'type': 'File', 'outputSource': "tailstepid/tailoutput"}],
+                "steps": {
+                    "headstepid":
+                        {
+                            "run": "head.cwl",
+                            "in": {"headinput": "inputfile"},
+                            "out": ['headoutput']
+                        },
+                    "tailstepid":
+                        {
+                            "run": "tail.cwl",
+                            "in": {"tailinput": "headstepid/headoutput"},
+                            "out": ['tailoutput']
+                        },
+                },
+                'requirements': {}
+            },
+            yaml.load(kernel._workflow_repository.get_by_id("main").to_yaml(), yaml.Loader),
+        )
+
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute('% view main')
+        )
+
+        self.assertIn(
+            'image/svg+xml',
+            responses[-1][0][2]['data'])
 
 
 if __name__ == '__main__':
