@@ -24,6 +24,7 @@ matrix:
       osx_image: xcode9.4  # Python 3.7 running on macOS 10.13
       language: shell  # 'language: python' is an error on Travis CI macOS
       before_install:
+        - brew install graphviz
         - python3 --version
         - pip3 install virtualenv
         - virtualenv -p python3 venv
