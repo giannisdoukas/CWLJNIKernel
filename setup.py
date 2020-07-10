@@ -59,16 +59,6 @@ def get_version(rel_path):
 with open(os.sep.join([os.path.abspath(os.path.dirname(__file__)), "README.md"]), "r") as fh:
     long_description = fh.read()
 
-with open('requirements.txt') as f:
-    req = f.readlines()
-
-for i, r in enumerate(req):
-    r = r.rstrip()
-    if r.startswith('git+https://'):
-        egg_position = r.rfind("#egg=")
-        dependency_name = r[egg_position + 5:]
-        req[i] = f"{dependency_name} @ {r[:egg_position]}"
-
 setup(
     name=name,
     version=get_version(f"{name}/CWLKernel.py"),
@@ -91,9 +81,4 @@ setup(
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
     ],
-    # cmdclass={
-    #     'develop': PostDevelopCommand,
-    #     'install': PostInstallCommand,
-    # },
-    install_requires=req
 )
