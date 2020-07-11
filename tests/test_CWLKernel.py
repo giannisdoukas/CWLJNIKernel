@@ -933,6 +933,30 @@ tailinput: headstepid/headoutput
             'image/svg+xml',
             responses[-1][0][2]['data'])
 
+    def test_system_magic_command(self):
+        kernel = CWLKernel()
+        # cancel send_response
+        responses = []
+        kernel.send_response = lambda *args, **kwargs: responses.append((args, kwargs))
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute("% system echo 'Hello World'")
+        )
+        self.assertDictEqual(
+            {'name': 'stdout', 'text': 'Hello World\n'},
+            responses[-1][0][2],
+        )
+
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute('% system ls ERROR')
+        )
+
+        self.assertEqual(
+            'stderr',
+            responses[-1][0][2]['name'],
+        )
+
 
 if __name__ == '__main__':
     unittest.main()

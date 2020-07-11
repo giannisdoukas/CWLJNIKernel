@@ -61,6 +61,10 @@ class CWLKernel(Kernel):
             self.log = logging.getLogger()
 
     @property
+    def runtime_directory(self) -> Path:
+        return Path(self._cwl_executor.file_manager.ROOT_DIRECTORY).absolute()
+
+    @property
     def workflow_repository(self) -> WorkflowRepository:
         return self._workflow_repository
 

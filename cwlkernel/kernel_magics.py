@@ -2,6 +2,7 @@ import argparse
 import json
 import os
 import random
+import subprocess
 from io import StringIO
 from pathlib import Path
 from typing import List
@@ -370,6 +371,24 @@ def visualize_graph(kernel: CWLKernel, tool_id: str):
         },
 
     )
+
+
+@CWLKernel.register_magic()
+def system(kernel: CWLKernel, commands: str):
+    """
+    Execute bash commands in the Runtime Directory of the session.
+
+    @param kernel:
+    @param commands:
+    @return:
+    """
+    result = subprocess.run(commands, capture_output=True, shell=True, cwd=kernel.runtime_directory.as_posix())
+    stdout = result.stdout.decode()
+    stderr = result.stderr.decode()
+    if len(stdout) > 0:
+        kernel.send_text_to_stdout(stdout)
+    if len(stderr) > 0:
+        kernel.send_error_response(stderr)
 
 
 # import user's magic commands
