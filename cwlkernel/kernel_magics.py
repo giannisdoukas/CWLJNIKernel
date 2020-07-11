@@ -382,7 +382,11 @@ def system(kernel: CWLKernel, commands: str):
     @param commands:
     @return:
     """
-    result = subprocess.run(commands, capture_output=True, shell=True, cwd=kernel.runtime_directory.as_posix())
+    result = subprocess.run(
+        commands,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        shell=True, cwd=kernel.runtime_directory.as_posix()
+    )
     stdout = result.stdout.decode()
     stderr = result.stderr.decode()
     if len(stdout) > 0:
