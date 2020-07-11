@@ -11,7 +11,8 @@ from typing import (
     NoReturn)
 from uuid import uuid4, UUID
 
-from cwltool.context import RuntimeContext
+from cwltool.context import RuntimeContext, LoadingContext
+from cwltool.executors import JobExecutor
 from cwltool.factory import Factory
 from ruamel import yaml
 
@@ -37,20 +38,15 @@ class CoreExecutor:
         self._workflow_path = workflow_str
         return self._workflow_path
 
-    def execute(self) -> Tuple[UUID, Dict, Optional[Exception]]:
+    def execute(self, provenance=False) -> Tuple[UUID, Dict, Optional[Exception]]:
         """
-        :return: Run ID, dict with new files, exception if there is any
+        :param provenance: Execute with provenance enabled/disabled.
+        :return: Run ID, dict with new files, exception if there is any.
         """
         run_id = uuid4()
 
-        runtime_context = RuntimeContext()
-        runtime_context.outdir = self.file_manager.ROOT_DIRECTORY
-        runtime_context.basedir = self.file_manager.ROOT_DIRECTORY
-        runtime_context.default_stdin = DEVNULL
-        runtime_context.default_stdout = DEVNULL
-        runtime_context.default_stderr = DEVNULL
+        factory = JupyterFactory(self.file_manager.ROOT_DIRECTORY)
         os.chdir(self.file_manager.ROOT_DIRECTORY)
-        factory = Factory(runtime_context=runtime_context)
         executable = factory.make(self._workflow_path)
         data = {}
         for data_file in self._data_paths:
@@ -75,3 +71,21 @@ class CoreExecutor:
                 if not file_path.exists():
                     raise FileNotFoundError(file_path)
 
+
+class JupyterFactory(Factory):
+
+    def __init__(self, root_directory: str,
+                 executor: Optional[JobExecutor] = None,
+                 loading_context: Optional[LoadingContext] = None,
+                 runtime_context: Optional[RuntimeContext] = None, ):
+        runtime_context = runtime_context if runtime_context is not None else RuntimeContext()
+        runtime_context.outdir = root_directory
+        runtime_context.basedir = root_directory
+        runtime_context.default_stdin = DEVNULL
+        runtime_context.default_stdout = DEVNULL
+        runtime_context.default_stderr = DEVNULL
+        super().__init__(
+            executor=executor,
+            loading_context=loading_context,
+            runtime_context=runtime_context,
+        )
