@@ -102,14 +102,29 @@ def snippet(kernel: CWLKernel, command: str):
 class ExecutionMagics:
 
     @staticmethod
-    @CWLKernel.register_magic()
-    def execute(kernel: CWLKernel, execute_argument_string: str):
+    def _parse_args(execute_argument_string: str):
         execute_argument_string = execute_argument_string.splitlines()
         cwl_id = execute_argument_string[0].strip()
+        yaml_str_data = '\n'.join(execute_argument_string[1:])
+        return cwl_id, yaml_str_data
+
+    @staticmethod
+    def _execute(kernel: CWLKernel, execute_argument_string: str, provenance: bool = False):
+        cwl_id, yaml_str_data = ExecutionMagics._parse_args(execute_argument_string)
         cwl_component_path: Path = kernel.workflow_repository.get_tools_path_by_id(cwl_id)
-        kernel._set_data('\n'.join(execute_argument_string[1:]))
-        kernel._execute_workflow(cwl_component_path)
+        kernel._set_data(yaml_str_data)
+        kernel._execute_workflow(cwl_component_path, provenance=provenance)
         kernel._clear_data()
+
+    @staticmethod
+    @CWLKernel.register_magic()
+    def execute(kernel: CWLKernel, execute_argument_string: str):
+        ExecutionMagics._execute(kernel, execute_argument_string, provenance=False)
+
+    @staticmethod
+    @CWLKernel.register_magic('executeWithProvenance')
+    def execute_with_provenance(kernel: CWLKernel, execute_argument_string: str):
+        ExecutionMagics._execute(kernel, execute_argument_string, provenance=True)
 
     @staticmethod
     @CWLKernel.register_magics_suggester('execute')

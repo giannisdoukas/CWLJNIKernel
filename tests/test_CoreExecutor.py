@@ -22,17 +22,18 @@ class TestCoreExecutor(unittest.TestCase):
     def test_executor_execute(self):
         # That tests fails only when is called through PyCharm
         file_manager = IOFileManager(self.kernel_root_directory)
-        executor = CoreExecutor(file_manager)
+        executor = CoreExecutor(file_manager, None)
         workflow_path = os.sep.join([self.cwl_directory, 'essential_input.cwl'])
         executor.set_workflow_path(workflow_path)
         with open(os.sep.join([self.data_directory, 'essential_input_data1.yml'])) as f:
             data_str = f.read()
         executor.set_data([data_str])
         try:
-            execution_id, new_files, exception = executor.execute()
+            execution_id, new_files, exception, research_object = executor.execute()
             self.assertIsNotNone(execution_id)
             self.assertDictEqual(new_files, {})
             self.assertIsNone(exception, 'An exception occurred while executing workflow')
+            self.assertIsNone(research_object, 'Research object must be none when provenance is disabled')
         except Exception:
             self.fail("execution failed")
 

@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import shutil
 import tarfile
 import tempfile
 import unittest
@@ -956,6 +957,44 @@ tailinput: headstepid/headoutput
             'stderr',
             responses[-1][0][2]['name'],
         )
+
+    def test_execute_with_provenance(self):
+        kernel = CWLKernel()
+        # cancel send_response
+        responses = []
+        kernel.send_response = lambda *args, **kwargs: responses.append((args, kwargs))
+
+        yaml = YAML(typ='safe')
+
+        with open(os.sep.join([self.cwl_directory, 'echo.cwl'])) as f:
+            workflow_str = f.read()
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(workflow_str, False)
+        )
+        self.assertIsNotNone(kernel._workflow_repository.get_by_id(yaml.load(workflow_str)['id']))
+
+        with open(os.sep.join([self.data_directory, 'echo-job.yml'])) as f:
+            data = '\n'.join(["% executeWithProvenance echo", f.read()])
+
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(data)
+        )
+
+        provenance_directory = list(filter(
+            lambda r: 'text' in r[0][2] and "Provenance stored in directory" in r[0][2]['text'],
+            responses
+        ))[0][0][2]['text'].split()[-1]
+        print(provenance_directory)
+        self.assertTrue(os.path.isdir(provenance_directory))
+        self.assertTrue(os.path.isdir(os.path.join(provenance_directory, 'data')))
+        self.assertTrue(os.path.isdir(os.path.join(provenance_directory, 'metadata')))
+        self.assertTrue(os.path.isdir(os.path.join(provenance_directory, 'snapshot')))
+        self.assertTrue(os.path.isfile(os.path.join(provenance_directory, 'snapshot', 'echo.cwl')))
+        self.assertTrue(os.path.isdir(os.path.join(provenance_directory, 'workflow')))
+        shutil.rmtree(provenance_directory)
+
 
 
 if __name__ == '__main__':

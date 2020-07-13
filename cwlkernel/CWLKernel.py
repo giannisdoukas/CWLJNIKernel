@@ -43,10 +43,11 @@ class CWLKernel(Kernel):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self._boot_directory: Path = Path(os.getcwd()).absolute()
         self._yaml_input_data: Optional[str] = None
         self._results_manager = ResultsManager(os.sep.join([CONF.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'results']))
         runtime_file_manager = IOFileManager(os.sep.join([CONF.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'runtime_data']))
-        self._cwl_executor = CoreExecutor(runtime_file_manager)
+        self._cwl_executor = CoreExecutor(runtime_file_manager, self._boot_directory)
         self._pid = (os.getpid(), os.getppid())
         self._cwl_logger = CWLLogger(os.path.join(CONF.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'logs'))
         self._set_process_ids()
@@ -236,12 +237,12 @@ class CWLKernel(Kernel):
     def _clear_data(self):
         self._yaml_input_data = None
 
-    def _execute_workflow(self, code_path: Path) -> Optional[Exception]:
+    def _execute_workflow(self, code_path: Path, provenance: bool = False) -> Optional[Exception]:
         input_data = [self._yaml_input_data] if self._yaml_input_data is not None else []
         self._cwl_executor.set_data(input_data)
         self._cwl_executor.set_workflow_path(str(code_path))
         self.log.debug('starting executing workflow ...')
-        run_id, results, exception = self._cwl_executor.execute()
+        run_id, results, exception, research_object = self._cwl_executor.execute(provenance)
         self.log.debug(f'\texecution results: {run_id}, {results}, {exception}')
         output_directory_for_that_run = str(run_id)
         for output in results:
@@ -263,6 +264,22 @@ class CWLKernel(Kernel):
                     metadata=results[output]
                 )
         self.send_json_response(results)
+        if research_object is not None:
+            self.send_text_to_stdout(f'\nProvenance stored in directory {research_object.folder}')
+            for path, _, files in os.walk(research_object.folder):
+                for name in files:
+                    file = os.path.relpath(os.path.join(path, name), self._boot_directory.as_posix())
+                    self.send_response(
+                        self.iopub_socket,
+                        'display_data',
+                        {
+                            'data': {
+                                "text/html": f'<a href="/files/{file}">{file}</a>',
+                                "text/plain": f"full path...."
+                            },
+                            'metadata': {},
+                        },
+                    )
         if exception is not None:
             self.log.debug(f'execution error: {exception}')
             self.send_response(self.iopub_socket, 'stream', {'name': 'stderr', 'text': str(exception)})
