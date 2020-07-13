@@ -288,7 +288,6 @@ class CWLKernel(Kernel):
         os.chdir(self._boot_directory.as_posix())
         return exception
 
-
     def get_past_results(self) -> List[str]:
         return self._results_manager.get_files()
 
