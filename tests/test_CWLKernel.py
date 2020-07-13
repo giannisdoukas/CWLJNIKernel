@@ -80,6 +80,11 @@ class TestCWLKernel(unittest.TestCase):
         self.assertTrue(full_path.startswith(kernel._results_manager.ROOT_DIRECTORY), 'output is in a wrong directory')
         self.assertTrue(basename, 'hello.txt')
 
+        session_dir = kernel._session_dir
+        self.assertTrue(os.path.isdir(session_dir))
+        kernel.__del__()
+        self.assertFalse(os.path.isdir(session_dir))
+
     def test_get_past_results_without_input(self):
         from cwlkernel.CWLKernel import CWLKernel
         kernel = CWLKernel()
@@ -994,7 +999,6 @@ tailinput: headstepid/headoutput
         self.assertTrue(os.path.isfile(os.path.join(provenance_directory, 'snapshot', 'echo.cwl')))
         self.assertTrue(os.path.isdir(os.path.join(provenance_directory, 'workflow')))
         shutil.rmtree(provenance_directory)
-
 
 
 if __name__ == '__main__':

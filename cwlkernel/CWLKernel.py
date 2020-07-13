@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import re
+import shutil
 import traceback
 from io import StringIO
 from pathlib import Path
@@ -43,10 +44,11 @@ class CWLKernel(Kernel):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self._session_dir = os.path.join(CONF.CWLKERNEL_BOOT_DIRECTORY, self.ident)
         self._boot_directory: Path = Path(os.getcwd()).absolute()
         self._yaml_input_data: Optional[str] = None
-        self._results_manager = ResultsManager(os.sep.join([CONF.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'results']))
-        runtime_file_manager = IOFileManager(os.sep.join([CONF.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'runtime_data']))
+        self._results_manager = ResultsManager(os.path.join(self._session_dir, 'results'))
+        runtime_file_manager = IOFileManager(os.path.join(self._session_dir, 'runtime_data'))
         self._cwl_executor = CoreExecutor(runtime_file_manager, self._boot_directory)
         self._pid = (os.getpid(), os.getppid())
         self._cwl_logger = CWLLogger(os.path.join(CONF.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'logs'))
@@ -303,6 +305,10 @@ class CWLKernel(Kernel):
 
     def send_text_to_stdout(self, text: str):
         self.send_response(self.iopub_socket, 'stream', {'name': 'stdout', 'text': text})
+
+    def __del__(self):
+        shutil.rmtree(self._session_dir)
+        os.chdir(self._boot_directory.as_posix())
 
 
 if __name__ == '__main__':
