@@ -309,7 +309,6 @@ class CWLKernel(Kernel):
 
     def __del__(self):
         shutil.rmtree(self._session_dir, ignore_errors=True)
-        os.chdir(self._boot_directory.as_posix())
 
 
 if __name__ == '__main__':

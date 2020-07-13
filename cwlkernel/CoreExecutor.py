@@ -103,6 +103,7 @@ class CoreExecutor:
         :param provenance: Execute with provenance enabled/disabled.
         :return: Run ID, dict with new files, exception if there is any.
         """
+        exception_to_return = None
         run_id = uuid4()
         factory: JupyterFactory
         if not provenance:
@@ -114,6 +115,7 @@ class CoreExecutor:
                 self.file_manager.ROOT_DIRECTORY,
                 provenance_dir
             )
+        old_directory = os.getcwd()
         os.chdir(self.file_manager.ROOT_DIRECTORY)
         executable = factory.make(self._workflow_path)
         data = {}
@@ -123,14 +125,15 @@ class CoreExecutor:
                 data = {**new_data, **data}
         try:
             result: Dict = executable(**data)
-            e = None
         except Exception as e:
             traceback.print_exc(file=sys.stderr)
             result = {}
+            exception_to_return = e
 
         if provenance:
             self._store_provenance(cast(ProvenanceFactory, factory), result)
-        return run_id, result, e, factory.runtime_context.research_obj
+        os.chdir(old_directory)
+        return run_id, result, exception_to_return, factory.runtime_context.research_obj
 
     @classmethod
     def _store_provenance(cls, factory: ProvenanceFactory, out) -> None:
