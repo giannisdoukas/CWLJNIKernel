@@ -285,7 +285,9 @@ class CWLKernel(Kernel):
         if exception is not None:
             self.log.debug(f'execution error: {exception}')
             self.send_response(self.iopub_socket, 'stream', {'name': 'stderr', 'text': str(exception)})
-            return exception
+        os.chdir(self._boot_directory.as_posix())
+        return exception
+
 
     def get_past_results(self) -> List[str]:
         return self._results_manager.get_files()
