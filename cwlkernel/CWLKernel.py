@@ -39,7 +39,7 @@ class CWLKernel(Kernel):
     banner = "Common Workflow Language"
 
     _magic_commands: Dict = {}
-    _auto_complete_engine = AutoCompleteEngine(_magic_commands.keys())
+    _auto_complete_engine = AutoCompleteEngine(map(lambda m: m.__name__, _magic_commands.values()))
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
