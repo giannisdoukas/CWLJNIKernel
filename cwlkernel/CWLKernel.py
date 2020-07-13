@@ -23,7 +23,7 @@ from .cwlrepository.cwlrepository import WorkflowRepository
 from .git.CWLGitResolver import CWLGitResolver
 
 version = "0.0.2"
-
+BOOT_DIRECTORY = Path(os.getcwd()).absolute()
 CONF = CWLExecuteConfigurator()
 
 
@@ -45,7 +45,7 @@ class CWLKernel(Kernel):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._session_dir = os.path.join(CONF.CWLKERNEL_BOOT_DIRECTORY, self.ident)
-        self._boot_directory: Path = Path(os.getcwd()).absolute()
+        self._boot_directory: Path = BOOT_DIRECTORY
         self._yaml_input_data: Optional[str] = None
         self._results_manager = ResultsManager(os.path.join(self._session_dir, 'results'))
         runtime_file_manager = IOFileManager(os.path.join(self._session_dir, 'runtime_data'))

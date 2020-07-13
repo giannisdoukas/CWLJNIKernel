@@ -106,7 +106,6 @@ class CoreExecutor:
         run_id = uuid4()
         factory: JupyterFactory
         if not provenance:
-
             factory = JupyterFactory(self.file_manager.ROOT_DIRECTORY)
         else:
             provenance_dir = os.path.join(self.provenance_directory.as_posix(), 'provenance')
@@ -130,11 +129,11 @@ class CoreExecutor:
             result = {}
 
         if provenance:
-            self._store_provenance(factory, result)
+            self._store_provenance(cast(ProvenanceFactory, factory), result)
         return run_id, result, e, factory.runtime_context.research_obj
 
     @classmethod
-    def _store_provenance(cls, factory: ProvenanceFactory, out) -> Path:
+    def _store_provenance(cls, factory: ProvenanceFactory, out) -> None:
         """Proxy method to cwltool's logic"""
         runtime_context = factory.runtime_context
         loading_context = factory.loading_context
