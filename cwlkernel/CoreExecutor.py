@@ -133,7 +133,8 @@ class CoreExecutor:
             self._store_provenance(factory, result)
         return run_id, result, e, factory.runtime_context.research_obj
 
-    def _store_provenance(self, factory: ProvenanceFactory, out) -> Path:
+    @classmethod
+    def _store_provenance(cls, factory: ProvenanceFactory, out) -> Path:
         """Proxy method to cwltool's logic"""
         runtime_context = factory.runtime_context
         loading_context = factory.loading_context

@@ -277,7 +277,7 @@ class CWLKernel(Kernel):
                         {
                             'data': {
                                 "text/html": f'<a href="/files/{file}">{file}</a>',
-                                "text/plain": f"full path...."
+                                "text/plain": f"{file}"
                             },
                             'metadata': {},
                         },
