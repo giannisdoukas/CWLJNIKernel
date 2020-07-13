@@ -307,7 +307,7 @@ class CWLKernel(Kernel):
         self.send_response(self.iopub_socket, 'stream', {'name': 'stdout', 'text': text})
 
     def __del__(self):
-        shutil.rmtree(self._session_dir)
+        shutil.rmtree(self._session_dir, ignore_errors=True)
         os.chdir(self._boot_directory.as_posix())
 
 
