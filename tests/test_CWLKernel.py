@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import shutil
 import tarfile
 import tempfile
 import unittest
@@ -78,6 +79,11 @@ class TestCWLKernel(unittest.TestCase):
 
         self.assertTrue(full_path.startswith(kernel._results_manager.ROOT_DIRECTORY), 'output is in a wrong directory')
         self.assertTrue(basename, 'hello.txt')
+
+        session_dir = kernel._session_dir
+        self.assertTrue(os.path.isdir(session_dir))
+        kernel.__del__()
+        self.assertFalse(os.path.isdir(session_dir))
 
     def test_get_past_results_without_input(self):
         from cwlkernel.CWLKernel import CWLKernel
@@ -932,6 +938,67 @@ tailinput: headstepid/headoutput
         self.assertIn(
             'image/svg+xml',
             responses[-1][0][2]['data'])
+
+    def test_system_magic_command(self):
+        kernel = CWLKernel()
+        # cancel send_response
+        responses = []
+        kernel.send_response = lambda *args, **kwargs: responses.append((args, kwargs))
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute("% system echo 'Hello World'")
+        )
+        self.assertDictEqual(
+            {'name': 'stdout', 'text': 'Hello World\n'},
+            responses[-1][0][2],
+        )
+
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute('% system ls ERROR')
+        )
+
+        self.assertEqual(
+            'stderr',
+            responses[-1][0][2]['name'],
+        )
+
+    def test_execute_with_provenance(self):
+        kernel = CWLKernel()
+        # cancel send_response
+        responses = []
+        kernel.send_response = lambda *args, **kwargs: responses.append((args, kwargs))
+
+        yaml = YAML(typ='safe')
+
+        with open(os.sep.join([self.cwl_directory, 'echo.cwl'])) as f:
+            workflow_str = f.read()
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(workflow_str, False)
+        )
+        self.assertIsNotNone(kernel._workflow_repository.get_by_id(yaml.load(workflow_str)['id']))
+
+        with open(os.sep.join([self.data_directory, 'echo-job.yml'])) as f:
+            data = '\n'.join(["% executeWithProvenance echo", f.read()])
+
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(data)
+        )
+
+        provenance_directory = list(filter(
+            lambda r: 'text' in r[0][2] and "Provenance stored in directory" in r[0][2]['text'],
+            responses
+        ))[0][0][2]['text'].split()[-1]
+        print(provenance_directory)
+        self.assertTrue(os.path.isdir(provenance_directory))
+        self.assertTrue(os.path.isdir(os.path.join(provenance_directory, 'data')))
+        self.assertTrue(os.path.isdir(os.path.join(provenance_directory, 'metadata')))
+        self.assertTrue(os.path.isdir(os.path.join(provenance_directory, 'snapshot')))
+        self.assertTrue(os.path.isfile(os.path.join(provenance_directory, 'snapshot', 'echo.cwl')))
+        self.assertTrue(os.path.isdir(os.path.join(provenance_directory, 'workflow')))
+        shutil.rmtree(provenance_directory)
 
 
 if __name__ == '__main__':

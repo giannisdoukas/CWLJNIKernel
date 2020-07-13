@@ -10,9 +10,8 @@ from cwlkernel.IOManager import IOFileManager
 class TestIOManager(unittest.TestCase):
     root_directory: str
 
-    @classmethod
-    def setUpClass(cls) -> None:
-        cls.root_directory = tempfile.mkdtemp()
+    def setUp(self) -> None:
+        self.root_directory = tempfile.mkdtemp()
 
     def test_read(self):
         fd, filename = tempfile.mkstemp(prefix='CWLJNKernelUnittests_', dir=self.root_directory)
@@ -47,15 +46,18 @@ class TestIOManager(unittest.TestCase):
 
         self.assertListEqual(
             [os.path.basename(f) for f in new_files],
-            [os.path.basename(f) for f in os.listdir(self.root_directory) if os.path.isfile(os.path.join(self.root_directory, f))]
+            [os.path.basename(f) for f in os.listdir(self.root_directory) if
+             os.path.isfile(os.path.join(self.root_directory, f))]
         )
         with open(new_files[0]) as f:
             copy_text = f.read()
         self.assertEqual(copy_text, 'tmp text')
 
-    @classmethod
-    def tearDownClass(cls) -> None:
-        shutil.rmtree(cls.root_directory)
+    def tearDown(self) -> None:
+        try:
+            shutil.rmtree(self.root_directory)
+        except:
+            pass
 
 
 if __name__ == '__main__':
