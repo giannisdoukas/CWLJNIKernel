@@ -118,52 +118,6 @@ class TestCWLKernelMagics(unittest.TestCase):
             responses[-1][0][2]['text']
         )
 
-    def test_display_data_magic_command(self):
-        from cwlkernel.CWLKernel import CWLKernel
-        kernel = CWLKernel()
-        # monitor responses
-        responses = []
-        kernel.send_response = lambda *args, **kwargs: responses.append((args, kwargs))
-
-        with open(os.sep.join([self.cwl_directory, 'echo_stdout.cwl'])) as f:
-            workflow_str = f.read()
-        self.assertDictEqual(
-            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
-            kernel.do_execute(workflow_str, False)
-        )
-
-        with open(os.sep.join([self.data_directory, 'echo-job.yml'])) as f:
-            data = f"% execute echo\n{f.read()}"
-        self.assertDictEqual(
-            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
-            kernel.do_execute(data, False)
-        )
-
-        kernel.do_execute('% displayData')
-        self.assertEqual(
-            'ERROR: you must select an output to display. Correct format:\n % displayData [output name]',
-            responses[-1][0][2]['text']
-        )
-
-        kernel.do_execute('% displayData echo_output')
-        self.assertEqual(
-            'Hello world!\n',
-            responses[-1][0][2]['text']
-        )
-
-        self.assertDictEqual(
-            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
-            kernel.do_execute(data, False)
-        )
-        self.assertEqual(
-            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
-            kernel.do_execute('% displayData echo_output')
-        )
-        self.assertEqual(
-            'Hello world!\n',
-            responses[-1][0][2]['text']
-        )
-
     def test_logs_magic_command(self):
         from cwlkernel.CWLKernel import CWLKernel
         kernel = CWLKernel()
@@ -297,72 +251,6 @@ class TestCWLKernelMagics(unittest.TestCase):
         self.assertDictEqual(
             yaml.load(StringIO(kernel._workflow_repository.__repo__.get_by_id("echo").to_yaml()), yaml.Loader),
             yaml.load(StringIO('\n'.join(echo_workflow)), yaml.Loader),
-        )
-
-    def test_compose(self):
-        kernel = CWLKernel()
-        # cancel send_response
-        responses = []
-        kernel.send_response = lambda *args, **kwargs: responses.append((args, kwargs))
-        with open(os.sep.join([self.cwl_directory, 'head.cwl'])) as f:
-            head = f.read()
-        with open(os.sep.join([self.cwl_directory, 'tail.cwl'])) as f:
-            tail = f.read()
-        self.assertDictEqual(
-            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
-            kernel.do_execute(head)
-        )
-        self.assertDictEqual(
-            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
-            kernel.do_execute(tail)
-        )
-
-        self.assertDictEqual(
-            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
-            kernel.do_execute("""% newWorkflow main
-% newWorkflowAddStep tail tailstepid
-% newWorkflowAddStep head headstepid
-% newWorkflowAddInput headstepid headinput
-id: inputfile
-type: File
-% newWorkflowAddStepIn tailstepid headstepid headoutput
-tailinput: headstepid/headoutput
-% newWorkflowAddOutputSource tailstepid/tailoutput File
-% newWorkflowBuild""")
-        )
-
-        self.assertDictEqual(
-            {
-                "cwlVersion": "v1.0",
-                "class": "Workflow",
-                "id": "main",
-                "inputs": [{'id': 'inputfile', 'type': 'File'}],
-                "outputs": [{'id': 'tailoutput', 'type': 'File', 'outputSource': "tailstepid/tailoutput"}],
-                "steps": {
-                    "headstepid":
-                        {
-                            "run": "head.cwl",
-                            "in": {"headinput": "inputfile"},
-                            "out": ['headoutput']
-                        },
-                    "tailstepid":
-                        {
-                            "run": "tail.cwl",
-                            "in": {"tailinput": "headstepid/headoutput"},
-                            "out": ['tailoutput']
-                        },
-                },
-                'requirements': {}
-            },
-            yaml.load(kernel._workflow_repository.get_by_id("main").to_yaml(), yaml.Loader),
-        )
-
-        self.assertDictEqual(
-            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
-            kernel.do_execute(f"""% execute main
-inputfile: 
-    class: File
-    location: {os.path.join(self.data_directory, "data.csv")}""")
         )
 
     def test_compose(self):
