@@ -3,9 +3,10 @@ import json
 import os
 import random
 import subprocess
+from copy import deepcopy
 from io import StringIO
 from pathlib import Path
-from typing import List
+from typing import List, Tuple
 
 import pydot
 from cwltool.cwlviewer import CWLViewer
@@ -408,6 +409,74 @@ def system(kernel: CWLKernel, commands: str):
         kernel.send_text_to_stdout(stdout)
     if len(stderr) > 0:
         kernel.send_error_response(stderr)
+
+
+class Scatter:
+    parser = argparse.ArgumentParser()
+    parser.add_argument('tool_id', type=str, nargs=1, )
+    parser.add_argument('input_to_scatter', type=str, nargs=1)
+
+    scatter_template = {
+        'cwlVersion': None,
+        'class': 'Workflow',
+        'inputs': None,
+        'outputs': None,
+        'steps': None,
+        'requirements': {'ScatterFeatureRequirement': {}}
+    }
+
+    @classmethod
+    def parse_args(cls, args_line) -> Tuple[str, str]:
+        try:
+            args = cls.parser.parse_args(args_line.split())
+            return args.tool_id[0], args.input_to_scatter[0]
+        except SystemExit:
+            raise RuntimeError('wrong arguments on scatter')
+
+    @staticmethod
+    @CWLKernel.register_magic()
+    def scatter(kernel: CWLKernel, args_line: str):
+        tool_id, input_to_scatter = Scatter.parse_args(args_line)
+        tool = kernel.workflow_repository.get_instance().get_by_id(tool_id)
+        if tool is None:
+            kernel.send_error_response(f"Tool '{tool_id}' not found")
+            return
+        try:
+            input_dict = {i['id']: i for i in tool.inputs if input_to_scatter == i['id']}[input_to_scatter]
+        except KeyError:
+            kernel.send_error_response(f"There is no input '{input_to_scatter}' in tool '{tool_id}'")
+            return
+        scattered = deepcopy(Scatter.scatter_template)
+        scattered['inputs'] = {
+            f'{input_dict["id"]}_scatter_array': {
+                'type': f'{input_dict["type"]}[]',
+            }
+        }
+        step_name = tool_id
+
+        def output_type(out):
+            return out['type'] if out['type'] != 'stdout' and out['type'] != 'stderr' else 'File'
+
+        scattered['outputs'] = {
+            f"{out['id']}_scatter_array": {
+                'type': f"{output_type(out)}[]",
+                'outputSource': f"{step_name}/{out['id']}",
+            }
+            for out in tool.outputs
+        }
+        scattered['steps'] = {
+            step_name: {
+                'run': kernel.workflow_repository.get_instance().get_tools_path_by_id(tool_id).as_posix(),
+                'scatter': input_to_scatter,
+                'in': {input_to_scatter: f"{input_to_scatter}_scatter_array"},
+                'out': [out['id'] for out in tool.outputs],
+            }
+        }
+        scattered['cwlVersion'] = tool.to_dict()['cwlVersion']
+        scattered['id'] = f'scattered_{tool_id}'
+        workflow = CWLWorkflow(scattered['id'], scattered)
+        kernel.workflow_repository.get_instance().register_tool(workflow)
+        kernel.send_json_response(scattered)
 
 
 # import user's magic commands
