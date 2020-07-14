@@ -129,9 +129,10 @@ class CWLKernel(Kernel):
     def do_execute(self, code: str, silent=False, store_history: bool = True,
                    user_expressions=None, allow_stdin: bool = False) -> Dict:
         status = 'ok'
+        payloads = []
         try:
             if self._is_magic_command(code):
-                self._do_execute_magic_command(code)
+                payloads = self._do_execute_magic_command(code)
             else:
                 dict_code = self._code_is_valid_yaml(code)
                 if dict_code is None:
@@ -143,11 +144,13 @@ class CWLKernel(Kernel):
             traceback.print_exc()
             self.send_error_response(f'{type(e).__name__}: {e}')
         finally:
+            # TODO: Payloads are considered deprecated, though their replacement is not yet implemented.
+            # https://jupyter-client.readthedocs.io/en/stable/messaging.html#payloads-deprecated
             return {
                 'status': status,
                 # The base class increments the execution count
                 'execution_count': self.execution_count,
-                'payload': [],
+                'payload': payloads,
                 'user_expressions': {},
             }
 
@@ -162,7 +165,8 @@ class CWLKernel(Kernel):
                 {'name': 'stdout', 'text': f"tool '{cwl_component.id}' registered"}
             )
 
-    def _do_execute_magic_command(self, commands: str):
+    def _do_execute_magic_command(self, commands: str) -> List[Dict]:
+        payloads = []
         for command in re.compile(r'^%[ ]+', re.MULTILINE).split(commands):
             command = command.strip()
             if command == '':
@@ -170,7 +174,10 @@ class CWLKernel(Kernel):
             command = command.split(" ")
             command_name = command[0].strip()
             args = " ".join(command[1:])
-            self._magic_commands[command_name](self, args)
+            payload = self._magic_commands[command_name](self, args)
+            if payload is not None:
+                payloads.append(payload)
+        return payloads
 
     def send_error_response(self, text) -> None:
         """

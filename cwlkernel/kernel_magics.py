@@ -6,7 +6,7 @@ import subprocess
 from copy import deepcopy
 from io import StringIO
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Optional
 
 import pydot
 from cwltool.cwlviewer import CWLViewer
@@ -477,6 +477,35 @@ class Scatter:
         workflow = CWLWorkflow(scattered['id'], scattered)
         kernel.workflow_repository.get_instance().register_tool(workflow)
         kernel.send_json_response(scattered)
+
+
+@CWLKernel.register_magic()
+def edit(kernel: CWLKernel, args: str) -> Optional[Dict]:
+    args_lines = args.splitlines()
+    if len(args_lines) == 0:
+        kernel.send_error_response('Missing arguments')
+        return
+    tool_id = args_lines[0].split()[-1]
+    workflow_repo = kernel.workflow_repository.get_instance()
+    if len(args_lines) == 1:
+        tool = workflow_repo.get_by_id(tool_id)
+        if tool is None:
+            kernel.send_error_response(f"Tool {tool_id} does not exists")
+            return None
+        text = os.linesep.join(["% edit " + args_lines[0], tool.to_yaml()])
+        return {
+            "source": "set_next_input",
+            "text": text,
+            "replace": True,
+        }
+    elif len(args_lines) > 1:
+        tool_description = os.linesep.join(args_lines[1:])
+        workflow_repo.delete_by_id(tool_id)
+        workflow_component_factory = WorkflowComponentFactory()
+        tool = workflow_component_factory.get_workflow_component(tool_description)
+        workflow_repo.register_tool(tool)
+        kernel.send_text_to_stdout(f"Tool '{tool_id}' updated")
+        kernel.send_json_response(tool.to_dict())
 
 
 # import user's magic commands
