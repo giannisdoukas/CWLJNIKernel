@@ -348,30 +348,6 @@ number_of_lines: 5
         )
         os.environ.pop('CWLKERNEL_MAGIC_COMMANDS_DIRECTORY')
 
-    def test_system_magic_command(self):
-        kernel = CWLKernel()
-        # cancel send_response
-        responses = []
-        kernel.send_response = lambda *args, **kwargs: responses.append((args, kwargs))
-        self.assertDictEqual(
-            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
-            kernel.do_execute("% system echo 'Hello World'")
-        )
-        self.assertDictEqual(
-            {'name': 'stdout', 'text': 'Hello World\n'},
-            responses[-1][0][2],
-        )
-
-        self.assertDictEqual(
-            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
-            kernel.do_execute('% system ls ERROR')
-        )
-
-        self.assertEqual(
-            'stderr',
-            responses[-1][0][2]['name'],
-        )
-
     def test_execute_with_provenance(self):
         kernel = CWLKernel()
         # cancel send_response
