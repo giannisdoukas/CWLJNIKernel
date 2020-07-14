@@ -733,6 +733,60 @@ tailinput: headstepid/headoutput
             responses[-1][0][2]['name'],
         )
 
+    def test_edit_magic(self):
+        kernel = CWLKernel()
+        # cancel send_response
+        responses = []
+        kernel.send_response = lambda *args, **kwargs: responses.append((args, kwargs))
+
+        with open(os.path.join(self.cwl_directory, 'echo_stdout.cwl')) as f:
+            yaml_tool = f.read()
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(yaml_tool)
+        )
+
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute("% edit NOT-EXISTING")
+        )
+        self.assertEqual(
+            responses[-1][0][2]['name'], 'stderr'
+        )
+
+        execute_response = kernel.do_execute("% edit echo")
+
+        self.assertEqual('ok', execute_response['status'])
+        self.assertListEqual(
+            execute_response['payload'],
+            [
+                {
+                    'source': "set_next_input",
+                    'replace': True,
+                    'text': f'% edit echo\n{kernel.workflow_repository.get_instance().get_by_id("echo").to_yaml()}',
+                }
+            ]
+        )
+
+        new_tool = yaml.safe_load(StringIO(yaml_tool))
+        new_tool['outputs'] = {
+            'new_echo_output': {'type': 'stdout'}
+        }
+        output = StringIO()
+        yaml.safe_dump(new_tool, output)
+        new_tool_yaml = output.getvalue()
+
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(f"% edit echo\n{new_tool_yaml}")
+        )
+
+        new_tool = kernel.workflow_repository.get_instance().get_by_id('echo')
+        self.assertListEqual(
+            new_tool.outputs,
+            [{'id': 'new_echo_output', 'type': 'stdout'}]
+        )
+
 
 if __name__ == '__main__':
     unittest.main()

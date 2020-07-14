@@ -63,12 +63,15 @@ class IOFileManager:
     def get_files_uri(self) -> ParseResult:
         return urlparse(self.ROOT_DIRECTORY, scheme='file')
 
+    def remove(self, path: str):
+        os.remove(path)
+        self._files_registry.pop(path)
+
     def clear(self):
         for f in os.listdir(self.ROOT_DIRECTORY):
             if os.path.isfile(f):
                 os.remove(f)
                 self._files_registry.pop(f)
-
 
 
 class ResultsManager(IOFileManager):

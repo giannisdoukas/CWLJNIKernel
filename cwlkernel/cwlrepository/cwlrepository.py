@@ -62,6 +62,13 @@ class WorkflowRepository(Iterable):
             comp = self._registry.get(tool_id, None)
             return comp[1] if comp is not None else None
 
+        def delete_by_id(self, tool_id: str) -> Optional[WorkflowComponent]:
+            path = self.get_tools_path_by_id(tool_id)
+            if path is None:
+                return None
+            self._file_repository.remove(path.as_posix())
+            self._registry.pop(tool_id)
+
     __repo__: __SingletonWorkflowRepository__ = None
 
     def __init__(self, directory: Path):
