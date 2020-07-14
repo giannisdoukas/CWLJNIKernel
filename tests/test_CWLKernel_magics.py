@@ -748,6 +748,15 @@ tailinput: headstepid/headoutput
 
         self.assertDictEqual(
             {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute("% edit ")
+        )
+
+        self.assertEqual(
+            responses[-1][0][2]['name'], 'stderr'
+        )
+
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
             kernel.do_execute("% edit NOT-EXISTING")
         )
         self.assertEqual(

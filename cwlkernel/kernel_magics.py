@@ -482,6 +482,9 @@ class Scatter:
 @CWLKernel.register_magic()
 def edit(kernel: CWLKernel, args: str) -> Optional[Dict]:
     args_lines = args.splitlines()
+    if len(args_lines) == 0:
+        kernel.send_error_response('Missing arguments')
+        return
     tool_id = args_lines[0].split()[-1]
     workflow_repo = kernel.workflow_repository.get_instance()
     if len(args_lines) == 1:
