@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import re
+import shutil
 import traceback
 from io import StringIO
 from pathlib import Path
@@ -22,7 +23,7 @@ from .cwlrepository.cwlrepository import WorkflowRepository
 from .git.CWLGitResolver import CWLGitResolver
 
 version = "0.0.2"
-
+BOOT_DIRECTORY = Path(os.getcwd()).absolute()
 CONF = CWLExecuteConfigurator()
 
 
@@ -43,10 +44,12 @@ class CWLKernel(Kernel):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self._session_dir = os.path.join(CONF.CWLKERNEL_BOOT_DIRECTORY, self.ident)
+        self._boot_directory: Path = BOOT_DIRECTORY
         self._yaml_input_data: Optional[str] = None
-        self._results_manager = ResultsManager(os.sep.join([CONF.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'results']))
-        runtime_file_manager = IOFileManager(os.sep.join([CONF.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'runtime_data']))
-        self._cwl_executor = CoreExecutor(runtime_file_manager)
+        self._results_manager = ResultsManager(os.path.join(self._session_dir, 'results'))
+        runtime_file_manager = IOFileManager(os.path.join(self._session_dir, 'runtime_data'))
+        self._cwl_executor = CoreExecutor(runtime_file_manager, self._boot_directory)
         self._pid = (os.getpid(), os.getppid())
         self._cwl_logger = CWLLogger(os.path.join(CONF.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'logs'))
         self._set_process_ids()
@@ -59,6 +62,10 @@ class CWLKernel(Kernel):
             Path(os.sep.join([CONF.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'git'])))
         if self.log is None:  # pylint: disable=access-member-before-definition
             self.log = logging.getLogger()
+
+    @property
+    def runtime_directory(self) -> Path:
+        return Path(self._cwl_executor.file_manager.ROOT_DIRECTORY).absolute()
 
     @property
     def workflow_repository(self) -> WorkflowRepository:
@@ -232,12 +239,12 @@ class CWLKernel(Kernel):
     def _clear_data(self):
         self._yaml_input_data = None
 
-    def _execute_workflow(self, code_path: Path) -> Optional[Exception]:
+    def _execute_workflow(self, code_path: Path, provenance: bool = False) -> Optional[Exception]:
         input_data = [self._yaml_input_data] if self._yaml_input_data is not None else []
         self._cwl_executor.set_data(input_data)
         self._cwl_executor.set_workflow_path(str(code_path))
         self.log.debug('starting executing workflow ...')
-        run_id, results, exception = self._cwl_executor.execute()
+        run_id, results, exception, research_object = self._cwl_executor.execute(provenance)
         self.log.debug(f'\texecution results: {run_id}, {results}, {exception}')
         output_directory_for_that_run = str(run_id)
         for output in results:
@@ -259,10 +266,27 @@ class CWLKernel(Kernel):
                     metadata=results[output]
                 )
         self.send_json_response(results)
+        if research_object is not None:
+            self.send_text_to_stdout(f'\nProvenance stored in directory {research_object.folder}')
+            for path, _, files in os.walk(research_object.folder):
+                for name in files:
+                    file = os.path.relpath(os.path.join(path, name), self._boot_directory.as_posix())
+                    self.send_response(
+                        self.iopub_socket,
+                        'display_data',
+                        {
+                            'data': {
+                                "text/html": f'<a href="/files/{file}">{file}</a>',
+                                "text/plain": f"{file}"
+                            },
+                            'metadata': {},
+                        },
+                    )
         if exception is not None:
             self.log.debug(f'execution error: {exception}')
             self.send_response(self.iopub_socket, 'stream', {'name': 'stderr', 'text': str(exception)})
-            return exception
+        os.chdir(self._boot_directory.as_posix())
+        return exception
 
     def get_past_results(self) -> List[str]:
         return self._results_manager.get_files()
@@ -282,6 +306,9 @@ class CWLKernel(Kernel):
 
     def send_text_to_stdout(self, text: str):
         self.send_response(self.iopub_socket, 'stream', {'name': 'stdout', 'text': text})
+
+    def __del__(self):
+        shutil.rmtree(self._session_dir, ignore_errors=True)
 
 
 if __name__ == '__main__':

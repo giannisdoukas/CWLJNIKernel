@@ -2,6 +2,7 @@ import argparse
 import json
 import os
 import random
+import subprocess
 from copy import deepcopy
 from io import StringIO
 from pathlib import Path
@@ -102,14 +103,29 @@ def snippet(kernel: CWLKernel, command: str):
 class ExecutionMagics:
 
     @staticmethod
-    @CWLKernel.register_magic()
-    def execute(kernel: CWLKernel, execute_argument_string: str):
+    def _parse_args(execute_argument_string: str):
         execute_argument_string = execute_argument_string.splitlines()
         cwl_id = execute_argument_string[0].strip()
+        yaml_str_data = '\n'.join(execute_argument_string[1:])
+        return cwl_id, yaml_str_data
+
+    @staticmethod
+    def _execute(kernel: CWLKernel, execute_argument_string: str, provenance: bool = False):
+        cwl_id, yaml_str_data = ExecutionMagics._parse_args(execute_argument_string)
         cwl_component_path: Path = kernel.workflow_repository.get_tools_path_by_id(cwl_id)
-        kernel._set_data('\n'.join(execute_argument_string[1:]))
-        kernel._execute_workflow(cwl_component_path)
+        kernel._set_data(yaml_str_data)
+        kernel._execute_workflow(cwl_component_path, provenance=provenance)
         kernel._clear_data()
+
+    @staticmethod
+    @CWLKernel.register_magic()
+    def execute(kernel: CWLKernel, execute_argument_string: str):
+        ExecutionMagics._execute(kernel, execute_argument_string, provenance=False)
+
+    @staticmethod
+    @CWLKernel.register_magic('executeWithProvenance')
+    def execute_with_provenance(kernel: CWLKernel, execute_argument_string: str):
+        ExecutionMagics._execute(kernel, execute_argument_string, provenance=True)
 
     @staticmethod
     @CWLKernel.register_magics_suggester('execute')
@@ -373,6 +389,28 @@ def visualize_graph(kernel: CWLKernel, tool_id: str):
     )
 
 
+@CWLKernel.register_magic()
+def system(kernel: CWLKernel, commands: str):
+    """
+    Execute bash commands in the Runtime Directory of the session.
+
+    @param kernel:
+    @param commands:
+    @return:
+    """
+    result = subprocess.run(
+        commands,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        shell=True, cwd=kernel.runtime_directory.as_posix()
+    )
+    stdout = result.stdout.decode()
+    stderr = result.stderr.decode()
+    if len(stdout) > 0:
+        kernel.send_text_to_stdout(stdout)
+    if len(stderr) > 0:
+        kernel.send_error_response(stderr)
+
+
 class Scatter:
     parser = argparse.ArgumentParser()
     parser.add_argument('tool_id', type=str, nargs=1, )
@@ -439,7 +477,6 @@ class Scatter:
         workflow = CWLWorkflow(scattered['id'], scattered)
         kernel.workflow_repository.get_instance().register_tool(workflow)
         kernel.send_json_response(scattered)
-
 
 # import user's magic commands
 
