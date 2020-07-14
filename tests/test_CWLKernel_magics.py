@@ -633,6 +633,82 @@ tailinput: headstepid/headoutput
             'image/svg+xml',
             responses[-1][0][2]['data'])
 
+    def test_scatter_tool(self):
+        kernel = CWLKernel()
+        # cancel send_response
+        responses = []
+        kernel.send_response = lambda *args, **kwargs: responses.append((args, kwargs))
+
+        with open(os.path.join(self.cwl_directory, 'echo_stdout.cwl')) as f:
+            yaml_tool = f.read()
+        expected_tool = {
+            'cwlVersion': 'v1.0',
+            'id': 'scattered_echo',
+            'class': 'Workflow',
+            'inputs': [{'id': 'message_scatter_array', 'type': 'string[]'}],
+            'outputs': [{'type': 'File[]', 'id': 'echo_output_scatter_array',
+                         'outputSource': 'echo/echo_output'}],
+            'steps': {'echo': {'run': 'echo.cwl',
+                               'scatter': 'message',
+                               'in': {'message': 'message_scatter_array'},
+                               'out': ['echo_output']}},
+            'requirements': {'ScatterFeatureRequirement': {}}
+        }
+
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(yaml_tool)
+        )
+        self.assertDictEqual(
+            {'status': 'error', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute('% scatter echo')
+        )
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute('% scatter NOT-EXISTING-TOOL-ID message')
+        )
+        self.assertEqual(
+            responses[-1][0][2]['name'], 'stderr'
+        )
+        self.assertEqual(
+            responses[-1][0][2]['text'], "Tool 'NOT-EXISTING-TOOL-ID' not found"
+        )
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute('% scatter echo NOT-EXISTING-INPUT')
+        )
+        self.assertEqual(
+            responses[-1][0][2]['name'], 'stderr'
+        )
+        self.assertEqual(
+            responses[-1][0][2]['text'], "There is no input 'NOT-EXISTING-INPUT' in tool 'echo'"
+        )
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute('% scatter echo message')
+        )
+        scattered_tool = dict(responses[-1][0][2]['data']['application/json'])
+        self.assertListEqual(
+            expected_tool['inputs'],
+            scattered_tool['inputs']
+        )
+        self.assertListEqual(
+            expected_tool['outputs'],
+            scattered_tool['outputs']
+        )
+        expected_tool['steps']['echo']['run'] = os.path.join(
+            os.path.dirname(scattered_tool['steps']['echo']['run']), expected_tool['steps']['echo']['run']
+        )
+        self.assertDictEqual(
+            expected_tool['steps'],
+            scattered_tool['steps']
+        )
+        self.assertDictEqual(
+            expected_tool,
+            scattered_tool
+        )
+        self.assertIsNotNone(kernel.workflow_repository.get_instance().get_by_id(scattered_tool['id']))
+
 
 if __name__ == '__main__':
     unittest.main()

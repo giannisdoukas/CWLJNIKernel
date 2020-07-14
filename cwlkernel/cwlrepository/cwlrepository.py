@@ -77,7 +77,7 @@ class WorkflowRepository(Iterable):
             yield tool
 
     @classmethod
-    def get_instance(cls) -> 'WorkflowRepository':
+    def get_instance(cls) -> '__SingletonWorkflowRepository__':
         if cls.__repo__ is None:
             raise RuntimeError('Repository has not been initialized')
         return cls.__repo__
