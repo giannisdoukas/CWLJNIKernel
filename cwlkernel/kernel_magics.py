@@ -478,6 +478,7 @@ class Scatter:
         kernel.workflow_repository.get_instance().register_tool(workflow)
         kernel.send_json_response(scattered)
 
+
 # import user's magic commands
 
 if CWLKernel_CONF.CWLKERNEL_MAGIC_COMMANDS_DIRECTORY is not None:
