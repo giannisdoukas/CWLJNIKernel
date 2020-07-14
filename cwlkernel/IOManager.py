@@ -67,6 +67,8 @@ class IOFileManager:
         for f in os.listdir(self.ROOT_DIRECTORY):
             if os.path.isfile(f):
                 os.remove(f)
+                self._files_registry.pop(f)
+
 
 
 class ResultsManager(IOFileManager):
