@@ -52,6 +52,18 @@ class WorkflowComponent(ABC):
     def _convert_outputs_from_dict_to_list(cls, outputs: Dict) -> List[Dict]:
         return [{'id': id, **cwl_output} for id, cwl_output in outputs.items()]
 
+    def get_output(self, output_id: str) -> Optional[Dict]:
+        for out in self.outputs:
+            if out['id'] == output_id:
+                return out
+        return None
+
+    def get_input(self, input_id: str) -> Optional[Dict]:
+        for inp in self.inputs:
+            if inp['id'] == input_id:
+                return inp
+        return None
+
 
 class CWLTool(WorkflowComponent):
 
@@ -132,6 +144,7 @@ class CWLWorkflow(WorkflowComponent):
     def add_input(self, workflow_input: Dict, step_id: str, in_step_id: str):
         self._inputs.append(workflow_input)
         self._steps[step_id]['in'][in_step_id] = workflow_input['id']
+        self._inputs = list({inp['id']: inp for inp in self._inputs}.values())
 
     def add_output_source(self, output_ref: str, type_of: str):
         references = output_ref.split('/')
@@ -141,6 +154,7 @@ class CWLWorkflow(WorkflowComponent):
             {'id': output_id, 'type': type_of, 'outputSource': output_ref}
         )
         self._steps[references[0]]['out'].append(output_id)
+        self._steps[references[0]]['out'] = list(set(self._steps[references[0]]['out']))
 
     def to_yaml(self) -> str:
         yaml_text = StringIO()

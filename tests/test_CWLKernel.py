@@ -250,22 +250,38 @@ class TestCWLKernel(unittest.TestCase):
             kernel.do_execute(tail)
         )
 
-        execute_tail = f"""% execute tail 
-tailinput:
-    class: File
-    location: {os.sep.join([self.data_directory, 'data.csv'])}
-number_of_lines: 15"""
+        execute_tail = os.linesep.join([
+            f"% execute tail",
+            f"tailinput:",
+            f"  class: File",
+            f"  location: {os.sep.join([self.data_directory, 'data.csv'])}",
+            f"number_of_lines: 15"
+        ])
         self.assertDictEqual(
             {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
             kernel.do_execute(execute_tail)
         )
 
-        execute_head = f"""% execute head
-headinput:
-    class: File
-    $data: tailoutput
-number_of_lines: 5        
-"""
+        execute_head = os.linesep.join([
+            '% execute head',
+            'headinput:',
+            '  class: File',
+            '  $data: tailoutput',
+            'number_of_lines: 5',
+        ])
+        self.assertDictEqual(
+            {'status': 'error', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(execute_head)
+        )
+
+        # execute by referencing id/output
+        execute_head = os.linesep.join([
+            '% execute head',
+            'headinput:',
+            '  class: File',
+            '  $data: tail/tailoutput',
+            'number_of_lines: 5',
+        ])
         self.assertDictEqual(
             {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
             kernel.do_execute(execute_head)

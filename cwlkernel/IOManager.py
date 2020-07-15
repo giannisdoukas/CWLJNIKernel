@@ -17,7 +17,7 @@ class IOFileManager:
         if not exists(root_directory):
             makedirs(root_directory)
         self.ROOT_DIRECTORY = root_directory
-        self._files_registry = {}
+        self._files_registry: Dict = {}
 
     @property
     def files_counter(self):
@@ -80,10 +80,19 @@ class ResultsManager(IOFileManager):
         """
         The results manager may have multiple results with the same id, from multiple executions. That function will
         return the path of the last result
+        @param result_id id to the Results manager. If the result_id has the format of path then the last goes to the
+        id and the previous one to the produced by [_produced_by]/[result_id]
         @return: the path of last result with the requested id or None
         """
+
+        produced_by, result_id = os.path.split(result_id)
+        results_filter = filter(lambda item: item[1]['id'] == result_id, self.get_files_registry().items())
+        produced_by = produced_by.strip()
+        if len(produced_by) > 0:
+            results_filter = filter(lambda item: item[1]['_produced_by'] == produced_by, results_filter)
+
         results = sorted(
-            filter(lambda item: item[1]['id'] == result_id, self.get_files_registry().items()),
+            results_filter,
             key=lambda item: item[1]['result_counter']
         )
         if len(results) == 0:
