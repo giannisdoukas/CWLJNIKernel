@@ -98,4 +98,3 @@ class ResultsManager(IOFileManager):
         if len(results) == 0:
             return None
         return results[-1][0]
-
