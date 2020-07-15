@@ -182,40 +182,34 @@ class TestCWLKernelMagics(unittest.TestCase):
         result = kernel.do_execute(data, False)
         self.assertEqual('ok', result['status'], f'execution returned an error')
 
-        self.assertTupleEqual(
-            (None, 'display_data',
-             {
-                 'data': {
-                     'text/plain': json.dumps({
-                         'example_out': {
-                             'location': f'file://{tar_directory}/hello.txt', 'basename': 'hello.txt',
-                             'nameroot': 'hello', 'nameext': '.txt', 'class': 'File',
-                             'checksum': 'sha1$2aae6c35c94fcfb415dbe95f408b9ce91ee846ed', 'size': 11,
-                             'http://commonwl.org/cwltool#generation': 0,
-                             'id': 'example_out',
-                             "result_counter": 0
-                         }
-                     }),
-                     'application/json': {
-                         'example_out': {
-                             'location': f'file://{tar_directory}/hello.txt', 'basename': 'hello.txt',
-                             'nameroot': 'hello', 'nameext': '.txt', 'class': 'File',
-                             'checksum': 'sha1$2aae6c35c94fcfb415dbe95f408b9ce91ee846ed', 'size': 11,
-                             'http://commonwl.org/cwltool#generation': 0,
-                             'id': 'example_out',
-                             "result_counter": 0
-                         }
-                     }
-                 },
-                 'metadata': {
-                     'application/json': {
-                         'expanded': False,
-                         'root': 'root'
-                     }
-                 }
-             }
-             ),
-            responses[-1][0]
+        self.assertDictEqual(
+            {
+                'example_out': {
+                    'location': f'file://{tar_directory}/hello.txt', 'basename': 'hello.txt',
+                    'nameroot': 'hello', 'nameext': '.txt', 'class': 'File',
+                    'checksum': 'sha1$2aae6c35c94fcfb415dbe95f408b9ce91ee846ed', 'size': 11,
+                    'http://commonwl.org/cwltool#generation': 0,
+                    'id': 'example_out',
+                    "result_counter": 0,
+                    '_produced_by': 'extract-tar',
+                }
+            },
+            responses[-1][0][2]['data']['application/json']
+        )
+
+        self.assertDictEqual(
+            {
+                'example_out': {
+                    'location': f'file://{tar_directory}/hello.txt', 'basename': 'hello.txt',
+                    'nameroot': 'hello', 'nameext': '.txt', 'class': 'File',
+                    'checksum': 'sha1$2aae6c35c94fcfb415dbe95f408b9ce91ee846ed', 'size': 11,
+                    'http://commonwl.org/cwltool#generation': 0,
+                    'id': 'example_out',
+                    "result_counter": 0,
+                    '_produced_by': 'extract-tar',
+                }
+            },
+            json.loads(responses[-1][0][2]['data']['text/plain'])
         )
 
     def test_snippet_builder(self):
@@ -794,6 +788,97 @@ tailinput: headstepid/headoutput
         self.assertListEqual(
             new_tool.outputs,
             [{'id': 'new_echo_output', 'type': 'stdout'}]
+        )
+
+    def test_compile_executed_steps(self):
+        kernel = CWLKernel()
+        # cancel send_response
+        responses = []
+        kernel.send_response = lambda *args, **kwargs: responses.append((args, kwargs))
+
+        with open(os.sep.join([self.cwl_directory, 'head-no-optional.cwl'])) as f:
+            head_cwl = f.read()
+        with open(os.sep.join([self.cwl_directory, 'tail-no-optional.cwl'])) as f:
+            tail = f.read()
+
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(head_cwl)
+        )
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(tail)
+        )
+
+        execute_tail = os.linesep.join([
+            f"% execute tail",
+            f"tailinput:",
+            f"  class: File",
+            f"  location: {os.sep.join([self.data_directory, 'data.csv'])}",
+        ])
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(execute_tail)
+        )
+
+        execute_head = os.linesep.join([
+            '% execute head',
+            'headinput:',
+            '  class: File',
+            '  $data: tail/tailoutput',
+        ])
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(execute_head)
+        )
+
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute('% compile main')
+        )
+        expected_workflow = {
+            'class': 'Workflow',
+            'cwlVersion': "v1.0",
+            'id': 'main',
+            'inputs': [
+                {
+                    'id': 'tailinput',
+                    'type': 'File'
+                },
+            ],
+            'outputs': [
+                {
+                    'id': 'headoutput',
+                    'type': 'File',
+                    'outputSource': "head/headoutput"
+                }
+            ],
+            "steps": {
+                "head":
+                    {
+                        "run": "head.cwl",
+                        "in": {
+                            "headinput": "tail/tailoutput"
+                        },
+                        "out": ['headoutput']
+                    },
+                "tail":
+                    {
+                        "run": "tail.cwl",
+                        "in": {"tailinput": "tailinput"},
+                        "out": ['tailoutput']
+                    },
+            },
+            'requirements': {}
+        }
+        self.assertDictEqual(
+            expected_workflow,
+            responses[-1][0][2]['data']['application/json']
+        )
+
+        self.assertDictEqual(
+            expected_workflow,
+            kernel.workflow_repository.get_instance().get_by_id('main').to_dict()
         )
 
 

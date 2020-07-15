@@ -4,10 +4,12 @@ import os
 import re
 import shutil
 import traceback
+from copy import deepcopy
 from io import StringIO
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple, Union, Callable, NoReturn
 
+from cwltool.provenance import ResearchObject
 from ipykernel.kernelbase import Kernel
 from ruamel import yaml
 from ruamel.yaml import YAML
@@ -62,6 +64,7 @@ class CWLKernel(Kernel):
             Path(os.sep.join([CONF.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'git'])))
         if self.log is None:  # pylint: disable=access-member-before-definition
             self.log = logging.getLogger()
+        self._history: List[Tuple[str, str]] = []
 
     @property
     def runtime_directory(self) -> Path:
@@ -78,6 +81,12 @@ class CWLKernel(Kernel):
     @property
     def workflow_composer(self) -> CWLWorkflow:
         return self._workflow_composer
+
+    @property
+    def history(self) -> List[Tuple[str, str]]:
+        """Returns a list of executed cells in the current session.
+        The first item has the value "magic"/"register" and the second the code """
+        return deepcopy(self._history)
 
     @workflow_composer.setter
     def workflow_composer(self, composer=Optional[CWLWorkflow]):
@@ -133,12 +142,14 @@ class CWLKernel(Kernel):
         try:
             if self._is_magic_command(code):
                 payloads = self._do_execute_magic_command(code)
+                self._history.append(('magic', code))
             else:
                 dict_code = self._code_is_valid_yaml(code)
                 if dict_code is None:
                     raise RuntimeError('Input cannot be parsed')
                 else:
                     self._do_execute_yaml(dict_code, code)
+                    self._history.append(('register', code))
         except Exception as e:
             status = 'error'
             traceback.print_exc()
@@ -236,6 +247,8 @@ class CWLKernel(Kernel):
                     data[key_id]['class'] == 'File' and \
                     '$data' in data[key_id]:
                 has_change = True
+                if os.path.split(data[key_id]["$data"])[0].strip() == '':
+                    raise ValueError("Missing tool id: [tool_id]/[input_id]")
                 data[key_id]['location'] = self._results_manager.get_last_result_by_id(data[key_id]["$data"])
                 data[key_id].pop('$data')
         if has_change is True:
@@ -246,14 +259,29 @@ class CWLKernel(Kernel):
     def _clear_data(self):
         self._yaml_input_data = None
 
-    def _execute_workflow(self, code_path: Path, provenance: bool = False) -> Optional[Exception]:
+    def _execute_workflow(self, code_path: Path, tool_id: str, provenance: bool = False) -> Optional[Exception]:
         input_data = [self._yaml_input_data] if self._yaml_input_data is not None else []
         self._cwl_executor.set_data(input_data)
         self._cwl_executor.set_workflow_path(str(code_path))
         self.log.debug('starting executing workflow ...')
         run_id, results, exception, research_object = self._cwl_executor.execute(provenance)
+        for result in results:
+            if isinstance(results[result], list):
+                for res in results[result]:
+                    res['_produced_by'] = tool_id
+            else:
+                results[result]['_produced_by'] = tool_id
         self.log.debug(f'\texecution results: {run_id}, {results}, {exception}')
         output_directory_for_that_run = str(run_id)
+        self.__store_results__(output_directory_for_that_run, results, research_object)
+        self.send_json_response(results)
+        if exception is not None:
+            self.log.debug(f'execution error: {exception}')
+            self.send_response(self.iopub_socket, 'stream', {'name': 'stderr', 'text': str(exception)})
+        return exception
+
+    def __store_results__(self, output_directory_for_that_run: str, results: Dict,
+                          research_object: Optional[ResearchObject]):
         for output in results:
             if isinstance(results[output], list):
                 for i, _ in enumerate(results[output]):
@@ -272,7 +300,6 @@ class CWLKernel(Kernel):
                     output_directory_for_that_run,
                     metadata=results[output]
                 )
-        self.send_json_response(results)
         if research_object is not None:
             self.send_text_to_stdout(f'\nProvenance stored in directory {research_object.folder}')
             for path, _, files in os.walk(research_object.folder):
@@ -289,10 +316,6 @@ class CWLKernel(Kernel):
                             'metadata': {},
                         },
                     )
-        if exception is not None:
-            self.log.debug(f'execution error: {exception}')
-            self.send_response(self.iopub_socket, 'stream', {'name': 'stderr', 'text': str(exception)})
-        return exception
 
     def get_past_results(self) -> List[str]:
         return self._results_manager.get_files()

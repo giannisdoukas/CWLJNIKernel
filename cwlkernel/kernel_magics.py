@@ -6,7 +6,7 @@ import subprocess
 from copy import deepcopy
 from io import StringIO
 from pathlib import Path
-from typing import List, Tuple, Dict, Optional
+from typing import List, Tuple, Dict, Optional, OrderedDict
 
 import pydot
 from cwltool.cwlviewer import CWLViewer
@@ -15,7 +15,7 @@ from ruamel.yaml import YAML
 
 from .CWLKernel import CONF as CWLKernel_CONF
 from .CWLKernel import CWLKernel
-from .cwlrepository.CWLComponent import CWLWorkflow, WorkflowComponentFactory
+from .cwlrepository.CWLComponent import CWLWorkflow, WorkflowComponentFactory, WorkflowComponent
 
 
 @CWLKernel.register_magic('newWorkflowBuild')
@@ -114,7 +114,7 @@ class ExecutionMagics:
         cwl_id, yaml_str_data = ExecutionMagics._parse_args(execute_argument_string)
         cwl_component_path: Path = kernel.workflow_repository.get_tools_path_by_id(cwl_id)
         kernel._set_data(yaml_str_data)
-        kernel._execute_workflow(cwl_component_path, provenance=provenance)
+        kernel._execute_workflow(cwl_component_path, cwl_id, provenance=provenance)
         kernel._clear_data()
 
     @staticmethod
@@ -506,6 +506,70 @@ def edit(kernel: CWLKernel, args: str) -> Optional[Dict]:
         workflow_repo.register_tool(tool)
         kernel.send_text_to_stdout(f"Tool '{tool_id}' updated")
         kernel.send_json_response(tool.to_dict())
+
+
+@CWLKernel.register_magic('compile')
+def compile_executed_steps_as_workflow(kernel: CWLKernel, args: str):
+    """
+    Compose a workflow from executed workflows.
+
+    @param kernel:
+    @param args:
+    @return:
+    """
+    new_workflow_id = args.strip()
+    yml = YAML(typ='rt')
+    executions_history = map(
+        lambda item: (
+            item[1].splitlines()[0].strip(),
+            yml.load(StringIO('\n'.join(item[1].splitlines()[1:])))
+        ),
+        filter(
+            lambda h: h[0] == 'magic' and h[1].split()[1] == 'execute',
+            kernel.history
+        ))
+    workflow_composer = CWLWorkflow(new_workflow_id)
+
+    tools_data_tuples = [
+        (kernel.workflow_repository.get_instance().get_by_id(command.split()[2]), data)
+        for command, data in executions_history
+    ]
+
+    outputs: Dict[str, List[Dict]] = {out[0].id: out[0].outputs for out in tools_data_tuples}
+
+    for tool, data in tools_data_tuples:  # type: WorkflowComponent, OrderedDict
+        workflow_composer.add(tool, tool.id)
+        for key_id in data:
+            if isinstance(data[key_id], dict) and \
+                    'class' in data[key_id] and \
+                    data[key_id]['class'] == 'File' and \
+                    '$data' in data[key_id]:
+                step_out, step_out_id = os.path.split(data[key_id]['$data'])
+                workflow_composer.add_step_in_out(
+                    step_in=tool.id, step_in_name=key_id, connect=data[key_id]['$data'],
+                    step_out=step_out, step_out_id=step_out_id
+                )
+                i = 0
+                for i, out in enumerate(outputs[step_out]):
+                    if out['id'] == step_out_id:
+                        break
+                outputs[step_out].pop(i)
+            else:
+                input_entry = tool.get_input(key_id)
+                workflow_composer.add_input(
+                    {'id': key_id, 'type': input_entry['type']}, step_id=tool.id, in_step_id=key_id
+                )
+
+    def output_type(out):
+        return out['type'] if out['type'] != 'stdout' and out['type'] != 'stderr' else 'File'
+
+    for step in outputs:
+        for output in outputs[step]:
+            output_ref = os.path.join(os.path.join(step, output['id']))
+            workflow_composer.add_output_source(output_ref, output_type(output))
+    kernel.workflow_repository.get_instance().register_tool(workflow_composer)
+    kernel.send_json_response(workflow_composer.to_dict())
+
 
 
 # import user's magic commands
