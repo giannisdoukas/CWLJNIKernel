@@ -3,10 +3,11 @@ import json
 import os
 import random
 import subprocess
+from collections import OrderedDict
 from copy import deepcopy
 from io import StringIO
 from pathlib import Path
-from typing import List, Tuple, Dict, Optional, OrderedDict
+from typing import List, Tuple, Dict, Optional
 
 import pydot
 from cwltool.cwlviewer import CWLViewer
