@@ -571,7 +571,6 @@ def compile_executed_steps_as_workflow(kernel: CWLKernel, args: str):
     kernel.send_json_response(workflow_composer.to_dict())
 
 
-
 # import user's magic commands
 
 if CWLKernel_CONF.CWLKERNEL_MAGIC_COMMANDS_DIRECTORY is not None:
