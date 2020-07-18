@@ -121,6 +121,16 @@ class ExecutionMagics:
     @staticmethod
     @CWLKernel.register_magic()
     def execute(kernel: CWLKernel, execute_argument_string: str):
+        """
+        Execute registered tool by id.
+        % execute [tool-id]
+        [yaml input ...]
+
+        @param kernel: the kernel instance
+        @param execute_argument_string: a multiple line string containins in the first line the tool id and in the next
+        lines the input parameters in yaml syntax
+        @return: None
+        """
         ExecutionMagics._execute(kernel, execute_argument_string, provenance=False)
 
     @staticmethod
@@ -346,7 +356,7 @@ def magics(kernel: CWLKernel, arg: str):
         )
     else:
         try:
-            full_doc: str = globals()[arg.magic].__doc__.splitlines()
+            full_doc: str = kernel._magic_commands[arg.magic].__doc__.splitlines()
             doc = []
             for line in full_doc:
                 line = line.strip()
