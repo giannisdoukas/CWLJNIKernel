@@ -327,6 +327,7 @@ def github_import(kernel: CWLKernel, url: str):
         with open(cwl_file) as f:
             file_data = f.read()
         cwl_component = cwl_factory.get_workflow_component(file_data)
+        cwl_component._id = os.path.splitext(os.path.basename(cwl_file))[0]
         kernel.workflow_repository.register_tool(cwl_component)
         kernel.send_response(kernel.iopub_socket, 'stream',
                              {'name': 'stdout', 'text': f"tool '{cwl_component.id}' registered\n"})

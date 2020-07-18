@@ -399,7 +399,7 @@ inputfile:
 
         self.assertDictEqual(
             {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
-            kernel.do_execute(f"""% execute threesteps
+            kernel.do_execute(f"""% execute 3stepWorkflow
 inputfile:
     class: File
     location: {os.sep.join([self.cwl_directory, '3stepWorkflow.cwl'])}
@@ -440,7 +440,7 @@ query: id""")
             kernel.do_execute(
                 "% githubImport https://github.com/giannisdoukas/CWLJNIKernel/blob/dev/tests/cwl/without_id.cwl")
         )
-        self.assertRegex(responses[-1][0][2]['text'], r"^tool '[a-zA-Z0-9-]+' registered")
+        self.assertRegex(responses[-1][0][2]['text'], r"^tool 'without_id' registered")
 
         self.assertDictEqual(
             {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
