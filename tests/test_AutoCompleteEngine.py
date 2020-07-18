@@ -8,8 +8,8 @@ class TestAutoCompleteEngine(unittest.TestCase):
     maxDiff = None
 
     def test_suggest_magics(self):
-        auto_complete_engine = AutoCompleteEngine(map(lambda m: m.__name__, CWLKernel._magic_commands.values()))
-        magic_commands = set([m.__name__ for m in CWLKernel._magic_commands.values()])
+        auto_complete_engine = AutoCompleteEngine(CWLKernel._magic_commands.keys())
+        magic_commands = set(CWLKernel._magic_commands.keys())
         code = "NOT EXISTING CONTENT"
         self.assertDictEqual(
             {'matches': [], 'cursor_start': len(code) - 1,
@@ -28,7 +28,7 @@ class TestAutoCompleteEngine(unittest.TestCase):
         code = "% NEW"
         suggestion = auto_complete_engine.suggest(code, 5)
         self.assertSetEqual(
-            {c.__name__ for c in CWLKernel._magic_commands.values() if c.__name__.startswith("new")},
+            {c for c in CWLKernel._magic_commands.keys() if c.startswith("new")},
             set(suggestion.pop('matches'))
         )
         self.assertDictEqual({'cursor_start': 2, 'cursor_end': 5}, suggestion)
@@ -36,7 +36,7 @@ class TestAutoCompleteEngine(unittest.TestCase):
         code = "% new"
         suggestion = auto_complete_engine.suggest(code, 3)
         self.assertSetEqual(
-            {c.__name__ for c in CWLKernel._magic_commands.values() if c.__name__.startswith("new")},
+            {c for c in CWLKernel._magic_commands.keys() if c.startswith("new")},
             set(suggestion.pop('matches'))
         )
         self.assertDictEqual({'cursor_start': 2, 'cursor_end': 5}, suggestion)
@@ -44,7 +44,7 @@ class TestAutoCompleteEngine(unittest.TestCase):
         code = "% foo\n% new"
         suggestion = auto_complete_engine.suggest(code, 9)
         self.assertSetEqual(
-            {c.__name__ for c in CWLKernel._magic_commands.values() if c.__name__.startswith("new")},
+            {c for c in CWLKernel._magic_commands.keys() if c.startswith("new")},
             set(suggestion.pop('matches'))
         )
         self.assertDictEqual({'cursor_start': 8, 'cursor_end': 11}, suggestion)
