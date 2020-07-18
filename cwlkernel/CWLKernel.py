@@ -39,7 +39,7 @@ class CWLKernel(Kernel):
     banner = "Common Workflow Language"
 
     _magic_commands: Dict = {}
-    _auto_complete_engine = AutoCompleteEngine(map(lambda m: m.__name__, _magic_commands.values()))
+    _auto_complete_engine = AutoCompleteEngine(_magic_commands.keys())
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -85,7 +85,7 @@ class CWLKernel(Kernel):
         def __call__(self, magic: Callable):
             magics_name = self._magics_name if self._magics_name is not None else magic.__name__
             CWLKernel._magic_commands[magics_name] = magic
-            CWLKernel._auto_complete_engine.add_magic_command(magic.__name__)
+            CWLKernel._auto_complete_engine.add_magic_command(magics_name)
             return magic
 
     class register_magics_suggester:
