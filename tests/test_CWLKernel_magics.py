@@ -447,6 +447,100 @@ query: id""")
             kernel.do_execute(f"""% execute {responses[-1][0][2]['text'].split("'")[1]}""")
         )
 
+    def test_githubImport_walk_paths(self):
+        when(requests) \
+            .get(
+            "https://api.github.com/repos/wilke/CWL-Quick-Start/contents/CWL/Workflows/pdf2wordcloud.cwl?ref=master") \
+            .thenReturn(mock({
+            'status_code': 200,
+            'json': lambda: {
+                "name": "pdf2wordcloud.cwl",
+                "path": "CWL/Workflows/pdf2wordcloud.cwl",
+                "sha": "a5227591046300bf2c86a4e159b4a7b3ef8dd131",
+                "size": 1310,
+                "url": "https://api.github.com/repos/wilke/CWL-Quick-Start/contents/CWL/Workflows/pdf2wordcloud.cwl?ref=master",
+                "html_url": "https://github.com/wilke/CWL-Quick-Start/blob/master/CWL/Workflows/pdf2wordcloud.cwl",
+                "git_url": "https://api.github.com/repos/wilke/CWL-Quick-Start/git/blobs/a5227591046300bf2c86a4e159b4a7b3ef8dd131",
+                "download_url": "https://raw.githubusercontent.com/wilke/CWL-Quick-Start/master/CWL/Workflows/pdf2wordcloud.cwl",
+                "type": "file",
+                "content": "Y3dsVmVyc2lvbjogdjEuMApjbGFzczogV29ya2Zsb3cKCiMgb3B0aW9uYWwg\nLSBhZGRpdGlvbmFsIHJlcXVpcmVtZW50cyB0byBleGVjdXRlIHRoaXMgd29y\na2Zsb3cKIyByZXF1aXJlbWVudHM6CiAKCiMgcmVxdWlyZWQsIHdvcmtmbG93\nIGlucHV0IG1hcHBpbmcKaW5wdXRzOgogIHBkZjoKICAgIHR5cGU6IEZpbGUK\nICAgIGRvYzogUERGIGZpbGUgZm9yIHRleHQgZXh0cmFjdGlvbgoKIyBsaXN0\nIG9mIHdvcmtmbG93IHN0ZXBzCnN0ZXBzOgogICMgc3RlcCBuYW1lCiAgcGRm\nMnRleHQ6CiAgICBsYWJlbDogcGRmMnRleHQKICAgIGRvYzogZXh0cmFjdCBh\nc2NpaSB0ZXh0IGZyb20gUERGCiAgICAjIHBhdGggdG8gdG9vbAogICAgcnVu\nOiAuLi9Ub29scy9wZGZ0b3RleHQuY3dsCiAgICAjIGFzc2lnbiB2YWx1ZXMg\ndG8gc3RlcC90b29sIGlucHV0cwogICAgaW46CiAgICAgICMgYXNzaWduIHdv\ncmtmbG93IGlucHV0IHRvIHRvb2wgaW5wdXQ6CiAgICAgICMgPHRvb2wgaW5w\ndXQgbmFtZT46PHdvcmtmbG93IGlucHV0IG5hbWU+CiAgICAgIHBkZjogcGRm\nCiAgICAgIHRleHQ6CiAgICAgICAgIyBhc3NpZ24gY29uc3RhbnQgb3V0cHV0\nIGZpbGUgbmFtZQogICAgICAgIGRlZmF1bHQ6ICJleHRyYWN0ZWQudHh0Igog\nICAgb3V0OiBbZXh0cmFjdGVkVGV4dF0KCiAgIyBzZWNvbmQgc3RlcCAgCiAg\ndGV4dDJ3b3JkQ2xvdWQ6CiAgICBsYWJlbDogd29yZC1jbG91ZAogICAgZG9j\nOiBjcmVhdGUgcG5nIGZyb20gdGV4dCBmaWxlCiAgICAjIHBhdGggdG8gdG9v\nbAogICAgcnVuOiAuLi9Ub29scy93b3JkY2xvdWQuY3dsCiAgICAjIGFzc2ln\nbiB2YWx1ZXMgdG8gc3RlcC90b29sIGlucHV0cwogICAgaW46CiAgICAgICMg\nYXNzaWduIG91dHB1dCBmcm9tIHByZXZpb3VzIHN0ZXAgdG8gdG9vbCBpbnB1\ndDoKICAgICAgIyA8dG9vbCBpbnB1dCBuYW1lPjo8cHJldmlvdXMgc3RlcC90\nb29sIG91dHB1dCBuYW1lPgogICAgICB0ZXh0OiBwZGYydGV4dC9leHRyYWN0\nZWRUZXh0CiAgICAgIG91dG5hbWU6CiAgICAgICAgZGVmYXVsdDogImV4dHJh\nY3RlZC50eHQucG5nIgogICAgIyByZXR1cm4gb3V0cHV0IGZyb20gdG9vbAog\nICAgb3V0OiBbaW1hZ2VdCgojIG1hcHBpbmcgb2Ygb3V0cHV0IHBhcmFtZXRl\nciB0byBzdGVwIG91dHB1dHMKb3V0cHV0czoKICAjIG5hbWUgb2Ygb3V0cHV0\nIHBhcmFtZXRlcgogIHdvcmRzOgogICAgdHlwZTogRmlsZQogICAgIyBhc3Np\nZ24gdmFsdWUgZnJvbSBzcGVjaWZpZWQgc3RlcCBvdXRwdXQgdG8gb3V0cHV0\nIHBhcmFtZXRlcgogICAgb3V0cHV0U291cmNlOiB0ZXh0MndvcmRDbG91ZC9p\nbWFnZQo=\n",
+                "encoding": "base64",
+                "_links": {
+                    "self": "https://api.github.com/repos/wilke/CWL-Quick-Start/contents/CWL/Workflows/pdf2wordcloud.cwl?ref=master",
+                    "git": "https://api.github.com/repos/wilke/CWL-Quick-Start/git/blobs/a5227591046300bf2c86a4e159b4a7b3ef8dd131",
+                    "html": "https://github.com/wilke/CWL-Quick-Start/blob/master/CWL/Workflows/pdf2wordcloud.cwl"
+                }
+            }
+        }))
+        when(requests) \
+            .get("https://api.github.com/repos/wilke/CWL-Quick-Start/contents/CWL/Tools/pdftotext.cwl?ref=master") \
+            .thenReturn(mock({
+            'status_code': 200,
+            'json': lambda: {
+                "name": "pdftotext.cwl",
+                "path": "CWL/Tools/pdftotext.cwl",
+                "sha": "a1e42933af7dd288ae77a6a7c52babbcbf5c0032",
+                "size": 874,
+                "url": "https://api.github.com/repos/wilke/CWL-Quick-Start/contents/CWL/Tools/pdftotext.cwl?ref=master",
+                "html_url": "https://github.com/wilke/CWL-Quick-Start/blob/master/CWL/Tools/pdftotext.cwl",
+                "git_url": "https://api.github.com/repos/wilke/CWL-Quick-Start/git/blobs/a1e42933af7dd288ae77a6a7c52babbcbf5c0032",
+                "download_url": "https://raw.githubusercontent.com/wilke/CWL-Quick-Start/master/CWL/Tools/pdftotext.cwl",
+                "type": "file",
+                "content": "IyEvdXNyL2Jpbi9lbnYgY3dsLXJ1bm5lcgpjd2xWZXJzaW9uOiB2MS4wCgoj\nIFR5cGUgb2YgZGVmaW5pdGlvbgojICAgQ29tbWFuZExpbmVUb29sICwgV29y\na2Zsb3cgLCBFeHByZXNzaW9uVG9vbAoKY2xhc3M6ICBDb21tYW5kTGluZVRv\nb2wKCiMgb3B0aW9uYWwgbGFiZWwKbGFiZWw6IFBERi10by1UZXh0CgojIG9w\ndGlvbmFsIGRlc2NyaXB0aW9uL2RvY3VtZW50YXRpb24KIyBkb2M6IDxERVRB\nSUxFRCBERVNDUklQVElPTj4KCiMgb3B0aW9uYWwgaGludHMgZm9yIENXTCBl\neGVjdXRpb24KaGludHM6CiMgc2V0IGV4ZWN1dGlvbiBlbnZpcm9ubWVudCBm\nb3IgYmFzZUNvbW1hbmQKLSBjbGFzczogRG9ja2VyUmVxdWlyZW1lbnQKICBk\nb2NrZXJQdWxsOiBtZ3Jhc3QvcGRmMndvcmRjbG91ZDpkZW1vCgojIHJlcXVp\ncmVkLCBuYW1lIG9mIGNvbW1hbmQgbGluZSB0b29sCmJhc2VDb21tYW5kOiBw\nZGZ0b3RleHQKCiMgb3B0aW9uYWwKIyBhcmd1bWVudHM6IDxMSVNUIE9GIENP\nTlNUQU5UIE9SIERFUklWRUQgQ09NTUFORCBMSU5FIE9QVElPTlM+CgojIHJl\ncXVpcmVkLCBpbnB1dCBtYXBwaW5nCmlucHV0czoKICBwZGY6CiAgICB0eXBl\nOiBGaWxlCiAgICBkb2M6IFBERiBpbnB1dCBmaWxlIHRvIGV4dHJhY3QgdGV4\ndCBmcm9tCiAgICBpbnB1dEJpbmRpbmc6CiAgICAgIHBvc2l0aW9uOiAxCiAg\ndGV4dDoKICAgIHR5cGU6IHN0cmluZwogICAgZG9jOiBOYW1lIGZvciB0ZXh0\nIG91dHB1dCBmaWxlCiAgICBpbnB1dEJpbmRpbmc6CiAgICAgIHBvc2l0aW9u\nOiAyCgojIG91dHB1dCBtYXBwaW5nCm91dHB1dHM6CiAgZXh0cmFjdGVkVGV4\ndDoKICAgIHR5cGU6IEZpbGUKICAgIG91dHB1dEJpbmRpbmc6CiAgICAgIGds\nb2I6ICQoaW5wdXRzLnRleHQpCg==\n",
+                "encoding": "base64",
+                "_links": {
+                    "self": "https://api.github.com/repos/wilke/CWL-Quick-Start/contents/CWL/Tools/pdftotext.cwl?ref=master",
+                    "git": "https://api.github.com/repos/wilke/CWL-Quick-Start/git/blobs/a1e42933af7dd288ae77a6a7c52babbcbf5c0032",
+                    "html": "https://github.com/wilke/CWL-Quick-Start/blob/master/CWL/Tools/pdftotext.cwl"
+                }
+            }
+        }))
+        when(requests) \
+            .get("https://api.github.com/repos/wilke/CWL-Quick-Start/contents/CWL/Tools/wordcloud.cwl?ref=master") \
+            .thenReturn(mock({
+            'status_code': 200,
+            'json': lambda: {
+                "name": "wordcloud.cwl",
+                "path": "CWL/Tools/wordcloud.cwl",
+                "sha": "3b43b020c5b3ba43bbb5d6d8335e57f30172916b",
+                "size": 925,
+                "url": "https://api.github.com/repos/wilke/CWL-Quick-Start/contents/CWL/Tools/wordcloud.cwl?ref=master",
+                "html_url": "https://github.com/wilke/CWL-Quick-Start/blob/master/CWL/Tools/wordcloud.cwl",
+                "git_url": "https://api.github.com/repos/wilke/CWL-Quick-Start/git/blobs/3b43b020c5b3ba43bbb5d6d8335e57f30172916b",
+                "download_url": "https://raw.githubusercontent.com/wilke/CWL-Quick-Start/master/CWL/Tools/wordcloud.cwl",
+                "type": "file",
+                "content": "IyEvdXNyL2Jpbi9lbnYgY3dsLXJ1bm5lcgpjd2xWZXJzaW9uOiB2MS4wCgoj\nIFR5cGUgb2YgZGVmaW5pdGlvbgojICAgQ29tbWFuZExpbmVUb29sICwgV29y\na2Zsb3cgLCBFeHByZXNzaW9uVG9vbAoKCmNsYXNzOiAgQ29tbWFuZExpbmVU\nb29sCgoKIyBvcHRpb25hbCBsYWJlbApsYWJlbDogV29yZC1DbG91ZAoKIyBv\ncHRpb25hbCBkZXNjcmlwdGlvbi9kb2N1bWVudGF0aW9uCiMgZG9jOiA8REVU\nQUlMRUQgREVTQ1JJUFRJT04+CgojIG9wdGlvbmFsIGhpbnRzIGZvciBDV0wg\nZXhlY3V0aW9uCmhpbnRzOgojIHNldCBleGVjdXRpb24gZW52aXJvbm1lbnQg\nZm9yIGJhc2VDb21tYW5kCi0gY2xhc3M6IERvY2tlclJlcXVpcmVtZW50CiAg\nZG9ja2VyUHVsbDogbWdyYXN0L3BkZjJ3b3JkY2xvdWQ6ZGVtbwoKIyByZXF1\naXJlZCwgbmFtZSBvZiBjb21tYW5kIGxpbmUgdG9vbApiYXNlQ29tbWFuZDog\nd29yZGNsb3VkX2NsaS5weQoKIyBvcHRpb25hbAojIGFyZ3VtZW50czogPExJ\nU1QgT0YgQ09OU1RBTlQgT1IgREVSSVZFRCBDT01NQU5EIExJTkUgT1BUSU9O\nUz4KCiMgcmVxdWlyZWQsIGlucHV0IG1hcHBpbmcKaW5wdXRzOgogIHRleHQ6\nCiAgICB0eXBlOiBGaWxlCiAgICBkb2M6IGlucHV0IGZpbGUgdG8gY3JlYXRl\nIHdvcmRjbG91ZCBpbWFnZSBmcm9tCiAgICBpbnB1dEJpbmRpbmc6CiAgICAg\nIHByZWZpeDogLS10ZXh0CiAgb3V0bmFtZToKICAgIHR5cGU6IHN0cmluZwog\nICAgZG9jOiBOYW1lIGZvciB0ZXh0IG91dHB1dCBmaWxlCiAgICBpbnB1dEJp\nbmRpbmc6CiAgICAgIHByZWZpeDogLS1pbWFnZWZpbGUKICAgIGRlZmF1bHQ6\nIHdvcmRjbG91ZC5wbmcKCiMgb3V0cHV0IG1hcHBpbmcKb3V0cHV0czoKICBp\nbWFnZToKICAgIHR5cGU6IEZpbGUKICAgIG91dHB1dEJpbmRpbmc6CiAgICAg\nIGdsb2I6ICQoaW5wdXRzLm91dG5hbWUpCg==\n",
+                "encoding": "base64",
+                "_links": {
+                    "self": "https://api.github.com/repos/wilke/CWL-Quick-Start/contents/CWL/Tools/wordcloud.cwl?ref=master",
+                    "git": "https://api.github.com/repos/wilke/CWL-Quick-Start/git/blobs/3b43b020c5b3ba43bbb5d6d8335e57f30172916b",
+                    "html": "https://github.com/wilke/CWL-Quick-Start/blob/master/CWL/Tools/wordcloud.cwl"
+                }
+            }
+        }))
+
+        kernel = CWLKernel()
+        # cancel send_response
+        responses = []
+        kernel.send_response = lambda *args, **kwargs: responses.append((args, kwargs))
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(
+                "% githubImport https://github.com/wilke/CWL-Quick-Start/blob/master/CWL/Workflows/pdf2wordcloud.cwl")
+        )
+
+        self.assertDictEqual(
+            {'status': 'ok', 'execution_count': 0, 'payload': [], 'user_expressions': {}},
+            kernel.do_execute(os.linesep.join([
+                f"% execute pdf2wordcloud",
+                f"pdf:",
+                f"  class: File",
+                f"  location: {os.sep.join([self.data_directory, 'text.pdf'])}"
+            ]))
+        )
+
+        self.assertIsNotNone(kernel.results_manager.get_last_result_by_id('words'))
+
     def test_sample_csv(self):
         kernel = CWLKernel()
         # cancel send_response

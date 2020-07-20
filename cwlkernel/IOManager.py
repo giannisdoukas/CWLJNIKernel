@@ -32,6 +32,7 @@ class IOFileManager:
 
     def write(self, relative_path: str, binary_data: bytes, metadata=None) -> str:
         real_path = os.path.realpath(os.path.join(self.ROOT_DIRECTORY, relative_path))
+        Path(os.path.dirname(real_path)).mkdir(exist_ok=True, parents=True)
         with open(real_path, 'wb') as f:
             self._files_registry[real_path] = metadata if metadata is not None else {}
             f.write(binary_data)

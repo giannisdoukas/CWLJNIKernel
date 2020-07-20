@@ -35,16 +35,13 @@ class WorkflowRepository(Iterable):
                 if 'id' not in output:
                     raise MissingIdError(f'Missing id for outputs: {output}')
 
-        def register_tool(self, tool: WorkflowComponent) -> None:
+        def register_tool(self, tool: WorkflowComponent, relative_directory: Optional[Path] = None) -> None:
             self.validate(tool)
             if tool.id in self._registry:
                 raise KeyError(f'Dublicate key error: {tool.id}')
-            path = Path(self._file_repository.write(f'{tool.id}.cwl', tool.to_yaml().encode()))
+            relative_directory = relative_directory.as_posix() if relative_directory is not None else f'{tool.id}.cwl'
+            path = Path(self._file_repository.write(relative_directory, tool.to_yaml().encode()))
             self._registry[tool.id] = (deepcopy(tool), path)
-
-        # def register_tools(self, *args):
-        #     for tool in args:
-        #         self.register_tool(tool)
 
         def get_by_id(self, tool_id: str) -> Optional[WorkflowComponent]:
             comp = self._registry.get(tool_id, None)
