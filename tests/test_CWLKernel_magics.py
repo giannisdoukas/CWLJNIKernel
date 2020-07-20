@@ -447,6 +447,8 @@ query: id""")
             kernel.do_execute(f"""% execute {responses[-1][0][2]['text'].split("'")[1]}""")
         )
 
+    @unittest.skipIf("TRAVIS_IGNORE_DOCKER" in os.environ and os.environ["TRAVIS_IGNORE_DOCKER"] == "true",
+            "Skipping this test on Travis CI.")
     def test_githubImport_walk_paths(self):
         when(requests) \
             .get(
