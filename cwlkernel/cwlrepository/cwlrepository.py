@@ -47,6 +47,9 @@ class WorkflowRepository(Iterable):
             comp = self._registry.get(tool_id, None)
             return comp[0] if comp is not None else None
 
+        def get_entry_by_id(self, tool_id: str):
+            return self._registry.get(tool_id, None)
+
         def __iter__(self) -> Iterator[WorkflowComponent]:
             for tool in self._registry.values():
                 yield tool[0]
