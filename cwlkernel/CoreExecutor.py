@@ -23,7 +23,7 @@ from cwltool.main import ProvLogFormatter, prov_deps
 from cwltool.process import add_sizes
 from cwltool.provenance import ResearchObject
 from cwltool.stdfsaccess import StdFsAccess
-from cwltool.utils import CWLObjectType, visit_class
+from cwltool.utils import CWLObjectType, visit_class, DEFAULT_TMP_PREFIX
 from ruamel import yaml
 
 from .IOManager import IOFileManager
@@ -42,9 +42,17 @@ class JupyterFactory(Factory):
         )
         self.runtime_context.outdir = root_directory
         self.runtime_context.basedir = root_directory
-        self.runtime_context.default_stdin = DEVNULL
         self.runtime_context.default_stdout = DEVNULL
         self.runtime_context.default_stderr = DEVNULL
+        # If on MacOS platform, TMPDIR must be set to be under one of the
+        # shared volumes in Docker for Mac
+        # More info: https://dockstore.org/docs/faq
+        if sys.platform == "darwin":
+            default_mac_path = "/private/tmp/docker_tmp"
+            if self.runtime_context.tmp_outdir_prefix == DEFAULT_TMP_PREFIX:
+                self.runtime_context.tmp_outdir_prefix = default_mac_path
+            if self.runtime_context.tmpdir_prefix == DEFAULT_TMP_PREFIX:
+                self.runtime_context.tmpdir_prefix = default_mac_path
 
 
 class ProvenanceFactory(JupyterFactory):

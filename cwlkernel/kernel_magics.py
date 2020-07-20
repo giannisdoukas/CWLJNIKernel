@@ -327,7 +327,9 @@ def github_import(kernel: CWLKernel, url: str):
         with open(cwl_file) as f:
             file_data = f.read()
         cwl_component = cwl_factory.get_workflow_component(file_data)
-        kernel.workflow_repository.register_tool(cwl_component)
+        cwl_component._id = os.path.splitext(os.path.basename(cwl_file))[0]
+        relative_dir = Path(os.path.relpath(cwl_file, kernel._github_resolver._local_root_directory.as_posix()))
+        kernel.workflow_repository.register_tool(cwl_component, relative_dir)
         kernel.send_response(kernel.iopub_socket, 'stream',
                              {'name': 'stdout', 'text': f"tool '{cwl_component.id}' registered\n"})
 
@@ -542,14 +544,14 @@ def compile_executed_steps_as_workflow(kernel: CWLKernel, args: str):
     workflow_composer = CWLWorkflow(new_workflow_id)
 
     tools_data_tuples = [
-        (kernel.workflow_repository.get_instance().get_by_id(command.split()[2]), data)
+        (kernel.workflow_repository.get_instance().get_entry_by_id(command.split()[2]), data)
         for command, data in executions_history
     ]
 
-    outputs: Dict[str, List[Dict]] = {out[0].id: out[0].outputs for out in tools_data_tuples}
-
-    for tool, data in tools_data_tuples:  # type: WorkflowComponent, OrderedDict
-        workflow_composer.add(tool, tool.id)
+    outputs: Dict[str, List[Dict]] = {out[0][0].id: out[0][0].outputs for out in tools_data_tuples}
+    repository_root_dir = kernel.workflow_repository.get_instance()._file_repository.ROOT_DIRECTORY
+    for (tool, tools_full_path), data in tools_data_tuples:  # type: WorkflowComponent, OrderedDict
+        workflow_composer.add(tool, tool.id, os.path.relpath(tools_full_path, repository_root_dir))
         for key_id in data:
             if isinstance(data[key_id], dict) and \
                     'class' in data[key_id] and \

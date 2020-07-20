@@ -127,12 +127,14 @@ class CWLWorkflow(WorkflowComponent):
         for step in self._steps:
             steps[step] = deepcopy(self._steps[step])
             if not isinstance(steps[step]['run'], str):
-                steps[step]['run'] = f"{steps[step]['run']._id}.cwl"
+                steps[step]['run'] = steps[step]['run'][1]
         return deepcopy(steps)
 
-    def add(self, component: WorkflowComponent, step_name: str) -> None:
+    def add(self, component: WorkflowComponent, step_name: str, run_reference: Optional[str] = None) -> None:
+        if run_reference is None:
+            run_reference = f'{component.id}.cwl'
         self._steps[step_name] = {
-            'run': component,
+            'run': (component, run_reference),
             'in': {},
             'out': []
         }
