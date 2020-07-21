@@ -4,6 +4,7 @@ import os
 import random
 import subprocess
 import traceback
+import xml.etree.ElementTree as ET
 from collections import OrderedDict
 from copy import deepcopy
 from io import StringIO
@@ -255,7 +256,7 @@ def display_data_image(kernel: CWLKernel, data_name: str):
         mime = 'image/svg+xml'
     else:
         raise ValueError(f'unsupported type {result}')
-    image = f"""<image src="data:{mime}; base64, {image}" alt="{result}">"""
+    image = f"""<image src="data:{mime}; base64, {image}" alt="{result}" style="max-width: 100%">"""
     kernel.send_response(
         kernel.iopub_socket,
         'display_data',
@@ -393,15 +394,16 @@ def visualize_graph(kernel: CWLKernel, tool_id: str):
     cwltool_main(['--print-rdf', os.path.abspath(path)], stdout=rdf_stream, logger_handler=handler)
     cwl_viewer = CWLViewer(rdf_stream.getvalue())
     (dot_object,) = pydot.graph_from_dot_data(cwl_viewer.dot())
-    image = dot_object.create('dot', 'svg')
-
+    ET.register_namespace('', 'http://www.w3.org/2000/svg')
+    image_xml = ET.fromstring(dot_object.create('dot', 'svg').decode())
+    image_container = f'<div style="max-width: 100%;">{ET.tostring(image_xml, method="html").decode()}</div>'
     kernel.send_response(
         kernel.iopub_socket,
         'display_data',
         {
             'data': {
-                "image/svg+xml": image.decode(),
-                "text/plain": image.decode()
+                "text/html": image_container,
+                "text/plain": image_container
             },
             'metadata': {},
         },

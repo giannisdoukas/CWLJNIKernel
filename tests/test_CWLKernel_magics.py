@@ -4,6 +4,7 @@ import os
 import tarfile
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 from io import StringIO
 from pathlib import Path
 
@@ -720,8 +721,14 @@ tailinput: headstepid/headoutput
         )
 
         self.assertIn(
-            'image/svg+xml',
+            'text/html',
             responses[-1][0][2]['data'])
+
+        # should not raise an exception
+        tree = ET.fromstring(responses[-1][0][2]['data']['text/html'])
+        self.assertEqual(len(tree.findall("./{http://www.w3.org/2000/svg}svg")), 1)
+
+
 
     def test_scatter_tool(self):
         kernel = CWLKernel()
