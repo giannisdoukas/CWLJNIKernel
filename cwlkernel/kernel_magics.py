@@ -3,6 +3,7 @@ import json
 import os
 import random
 import subprocess
+import traceback
 from collections import OrderedDict
 from copy import deepcopy
 from io import StringIO
@@ -324,14 +325,20 @@ def data(kernel: CWLKernel, *args):
 def github_import(kernel: CWLKernel, url: str):
     cwl_factory = WorkflowComponentFactory()
     for cwl_file in kernel._github_resolver.resolve(url):
-        with open(cwl_file) as f:
-            file_data = f.read()
-        cwl_component = cwl_factory.get_workflow_component(file_data)
-        cwl_component._id = os.path.splitext(os.path.basename(cwl_file))[0]
-        relative_dir = Path(os.path.relpath(cwl_file, kernel._github_resolver._local_root_directory.as_posix()))
-        kernel.workflow_repository.register_tool(cwl_component, relative_dir)
-        kernel.send_response(kernel.iopub_socket, 'stream',
-                             {'name': 'stdout', 'text': f"tool '{cwl_component.id}' registered\n"})
+        try:
+            with open(cwl_file) as f:
+                file_data = f.read()
+            cwl_component = cwl_factory.get_workflow_component(file_data)
+            cwl_component._id = os.path.splitext(os.path.basename(cwl_file))[0]
+            relative_dir = Path(os.path.relpath(cwl_file, kernel._github_resolver._local_root_directory.as_posix()))
+            kernel.workflow_repository.register_tool(cwl_component, relative_dir)
+            kernel.send_response(kernel.iopub_socket, 'stream',
+                                 {'name': 'stdout', 'text': f"tool '{cwl_component.id}' registered\n"})
+        except Exception as e:
+            kernel.send_error_response(f'Error on loading tool "{cwl_file}"\n')
+            stacktrace_error = StringIO()
+            traceback.print_exc(file=stacktrace_error)
+            kernel.send_error_response(f'Error: {e}\n{stacktrace_error.getvalue()}')
 
 
 @CWLKernel.register_magic('viewTool')
