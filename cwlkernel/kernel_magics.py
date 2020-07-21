@@ -3,6 +3,8 @@ import json
 import os
 import random
 import subprocess
+import traceback
+import xml.etree.ElementTree as ET
 from collections import OrderedDict
 from copy import deepcopy
 from io import StringIO
@@ -254,7 +256,7 @@ def display_data_image(kernel: CWLKernel, data_name: str):
         mime = 'image/svg+xml'
     else:
         raise ValueError(f'unsupported type {result}')
-    image = f"""<image src="data:{mime}; base64, {image}" alt="{result}">"""
+    image = f"""<image src="data:{mime}; base64, {image}" alt="{result}" style="max-width: 100%">"""
     kernel.send_response(
         kernel.iopub_socket,
         'display_data',
@@ -324,14 +326,20 @@ def data(kernel: CWLKernel, *args):
 def github_import(kernel: CWLKernel, url: str):
     cwl_factory = WorkflowComponentFactory()
     for cwl_file in kernel._github_resolver.resolve(url):
-        with open(cwl_file) as f:
-            file_data = f.read()
-        cwl_component = cwl_factory.get_workflow_component(file_data)
-        cwl_component._id = os.path.splitext(os.path.basename(cwl_file))[0]
-        relative_dir = Path(os.path.relpath(cwl_file, kernel._github_resolver._local_root_directory.as_posix()))
-        kernel.workflow_repository.register_tool(cwl_component, relative_dir)
-        kernel.send_response(kernel.iopub_socket, 'stream',
-                             {'name': 'stdout', 'text': f"tool '{cwl_component.id}' registered\n"})
+        try:
+            with open(cwl_file) as f:
+                file_data = f.read()
+            cwl_component = cwl_factory.get_workflow_component(file_data)
+            cwl_component._id = os.path.splitext(os.path.basename(cwl_file))[0]
+            relative_dir = Path(os.path.relpath(cwl_file, kernel._github_resolver._local_root_directory.as_posix()))
+            kernel.workflow_repository.register_tool(cwl_component, relative_dir)
+            kernel.send_response(kernel.iopub_socket, 'stream',
+                                 {'name': 'stdout', 'text': f"tool '{cwl_component.id}' registered\n"})
+        except Exception as e:
+            kernel.send_error_response(f'Error on loading tool "{cwl_file}"\n')
+            stacktrace_error = StringIO()
+            traceback.print_exc(file=stacktrace_error)
+            kernel.send_error_response(f'Error: {e}\n{stacktrace_error.getvalue()}')
 
 
 @CWLKernel.register_magic('viewTool')
@@ -386,15 +394,16 @@ def visualize_graph(kernel: CWLKernel, tool_id: str):
     cwltool_main(['--print-rdf', os.path.abspath(path)], stdout=rdf_stream, logger_handler=handler)
     cwl_viewer = CWLViewer(rdf_stream.getvalue())
     (dot_object,) = pydot.graph_from_dot_data(cwl_viewer.dot())
-    image = dot_object.create('dot', 'svg')
-
+    ET.register_namespace('', 'http://www.w3.org/2000/svg')
+    image_xml = ET.fromstring(dot_object.create('dot', 'svg').decode())
+    image_container = f'<div style="max-width: 100%;">{ET.tostring(image_xml, method="html").decode()}</div>'
     kernel.send_response(
         kernel.iopub_socket,
         'display_data',
         {
             'data': {
-                "image/svg+xml": image.decode(),
-                "text/plain": image.decode()
+                "text/html": image_container,
+                "text/plain": image_container
             },
             'metadata': {},
         },

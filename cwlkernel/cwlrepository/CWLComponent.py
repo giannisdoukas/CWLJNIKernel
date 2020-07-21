@@ -4,7 +4,7 @@ from copy import deepcopy
 from io import StringIO
 from typing import Dict, List, Union, Optional
 
-import yaml
+from ruamel import yaml
 
 
 class WorkflowComponent(ABC):

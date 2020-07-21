@@ -4,6 +4,7 @@ import os
 import tarfile
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 from io import StringIO
 from pathlib import Path
 
@@ -448,7 +449,7 @@ query: id""")
         )
 
     @unittest.skipIf("TRAVIS_IGNORE_DOCKER" in os.environ and os.environ["TRAVIS_IGNORE_DOCKER"] == "true",
-            "Skipping this test on Travis CI.")
+                     "Skipping this test on Travis CI.")
     def test_githubImport_walk_paths(self):
         when(requests) \
             .get(
@@ -720,8 +721,12 @@ tailinput: headstepid/headoutput
         )
 
         self.assertIn(
-            'image/svg+xml',
+            'text/html',
             responses[-1][0][2]['data'])
+
+        # should not raise an exception
+        tree = ET.fromstring(responses[-1][0][2]['data']['text/html'])
+        self.assertEqual(len(tree.findall("./{http://www.w3.org/2000/svg}svg")), 1)
 
     def test_scatter_tool(self):
         kernel = CWLKernel()
