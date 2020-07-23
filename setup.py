@@ -37,7 +37,7 @@ class PostInstallCommand(install):
     """Post-installation for installation mode."""
 
     def run(self):
-        super().do_egg_install()
+        super().run()
         install_kernel_specs()
 
 
@@ -81,4 +81,22 @@ setup(
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
     ],
+    install_requires=[
+        "cwltool>=3.0.20200720165847",
+        "jsonschema>=3.2.0",
+        "jupyter-client>=5.3.4",
+        "jupyter-core>=4.6.3",
+        "psutil>=5.7.0",
+        "ruamel.yaml<=0.16.5,>=0.12.4",
+        "PyYAML>=5.3.1",
+        "pandas>=1.0.4",
+        "notebook>=6.0.3",
+        "requests>=2.23.0",
+        "pygtrie>=2.3.3",
+        "pydot>=1.4.1",
+    ],
+    cmdclass={
+        'develop': PostDevelopCommand,
+        'install': PostInstallCommand,
+    },
 )
