@@ -10,19 +10,22 @@ name = 'cwlkernel'
 
 def install_kernel_specs():
     import sys
-    from jupyter_client.kernelspec import KernelSpecManager
-    kernel_requirements_directory = os.path.join(
-        os.path.dirname(os.path.realpath(__file__)),
-        'kernelmeta'
-    )
+    try:
+        from jupyter_client.kernelspec import KernelSpecManager
+        kernel_requirements_directory = os.path.join(
+            os.path.dirname(os.path.realpath(__file__)),
+            'kernelmeta'
+        )
 
-    print('Installing IPython kernel spec')
-    KernelSpecManager().install_kernel_spec(
-        kernel_requirements_directory,
-        name,
-        user=False,
-        prefix=sys.prefix
-    )
+        print('Installing IPython kernel spec')
+        KernelSpecManager().install_kernel_spec(
+            kernel_requirements_directory,
+            name,
+            user=False,
+            prefix=sys.prefix
+        )
+    except ImportError:
+        print('Jupyter is not installed', file=sys.stderr)
 
 
 class PostDevelopCommand(develop):

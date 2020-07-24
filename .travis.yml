@@ -11,7 +11,7 @@ before_install:
   - python --version
 install:
   - pip install -r test-requirements.txt
-  - python setup.py install
+  - pip install .
 # command to run tests
 script:
   - pycodestyle --max-line-length=119 $(find cwlkernel -name '*.py')
@@ -30,8 +30,8 @@ matrix:
         - pip3 install virtualenv
         - virtualenv -p python3 venv
         - source venv/bin/activate
-        - pip3 install -U -r requirements.txt
         - pip3 install -U -r test-requirements.txt
+        - pip3 install .
       script: coverage run --source cwlkernel --omit cwlkernel/__main__.py -m unittest discover tests
       env:
         - TRAVIS_IGNORE_DOCKER=true
