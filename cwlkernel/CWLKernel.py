@@ -15,12 +15,11 @@ from ruamel import yaml
 from ruamel.yaml import YAML
 
 from .AutoCompleteEngine import AutoCompleteEngine
-from .CWLBuilder import CWLSnippetBuilder
 from .CWLExecuteConfigurator import CWLExecuteConfigurator
 from .CWLLogger import CWLLogger
 from .CoreExecutor import CoreExecutor
 from .IOManager import IOFileManager, ResultsManager
-from .cwlrepository.CWLComponent import WorkflowComponentFactory, CWLWorkflow
+from .cwlrepository.CWLComponent import WorkflowComponentFactory
 from .cwlrepository.cwlrepository import WorkflowRepository
 from .git.CWLGitResolver import CWLGitResolver
 
@@ -46,20 +45,18 @@ class CWLKernel(Kernel):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self._session_dir = os.path.join(CONF.CWLKERNEL_BOOT_DIRECTORY, self.ident)
+        self._session_dir: str = os.path.join(CONF.CWLKERNEL_BOOT_DIRECTORY, self.ident)
         self._boot_directory: Path = BOOT_DIRECTORY
         self._yaml_input_data: Optional[str] = None
-        self._results_manager = ResultsManager(os.path.join(self._session_dir, 'results'))
+        self._results_manager: ResultsManager = ResultsManager(os.path.join(self._session_dir, 'results'))
         runtime_file_manager = IOFileManager(os.path.join(self._session_dir, 'runtime_data'))
-        self._cwl_executor = CoreExecutor(runtime_file_manager, self._boot_directory)
+        self._cwl_executor: CoreExecutor = CoreExecutor(runtime_file_manager, self._boot_directory)
         self._pid = (os.getpid(), os.getppid())
-        self._cwl_logger = CWLLogger(os.path.join(CONF.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'logs'))
+        self._cwl_logger: CWLLogger = CWLLogger(os.path.join(CONF.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'logs'))
         self._set_process_ids()
         self._cwl_logger.save()
-        self._workflow_repository = WorkflowRepository(
+        self._workflow_repository: WorkflowRepository = WorkflowRepository(
             Path(os.sep.join([CONF.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'repo'])))
-        self._snippet_builder = CWLSnippetBuilder()
-        self._workflow_composer: Optional[CWLWorkflow] = None
         self._github_resolver: CWLGitResolver = CWLGitResolver(
             Path(os.sep.join([CONF.CWLKERNEL_BOOT_DIRECTORY, self.ident, 'git'])))
         if self.log is None:  # pylint: disable=access-member-before-definition
@@ -79,18 +76,10 @@ class CWLKernel(Kernel):
         return self._results_manager
 
     @property
-    def workflow_composer(self) -> CWLWorkflow:
-        return self._workflow_composer
-
-    @property
     def history(self) -> List[Tuple[str, str]]:
         """Returns a list of executed cells in the current session.
         The first item has the value "magic"/"register" and the second the code """
         return deepcopy(self._history)
-
-    @workflow_composer.setter
-    def workflow_composer(self, composer=Optional[CWLWorkflow]):
-        self._workflow_composer = composer
 
     class register_magic:
         """Registers magic commands. That method should be used as a decorator to register custom magic commands."""
