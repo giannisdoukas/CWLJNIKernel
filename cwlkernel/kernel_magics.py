@@ -16,91 +16,110 @@ from cwltool.cwlviewer import CWLViewer
 from cwltool.main import main as cwltool_main
 from ruamel.yaml import YAML
 
+from .CWLBuilder import CWLSnippetBuilder
 from .CWLKernel import CONF as CWLKernel_CONF
 from .CWLKernel import CWLKernel
 from .cwlrepository.CWLComponent import CWLWorkflow, WorkflowComponentFactory, WorkflowComponent
 
 
-@CWLKernel.register_magic('newWorkflowBuild')
-def new_workflow_build(kernel: CWLKernel, *args):
-    kernel.send_json_response(kernel.workflow_composer.to_dict())
-    kernel.workflow_repository.register_tool(kernel.workflow_composer)
-    kernel.workflow_composer = None
+class ManualWorkflowComposer:
+    _workflow_composer: CWLWorkflow
+
+    @staticmethod
+    @CWLKernel.register_magic('newWorkflowBuild')
+    def new_workflow_build(kernel: CWLKernel, *args):
+        kernel.send_json_response(ManualWorkflowComposer._workflow_composer.to_dict())
+        kernel.workflow_repository.register_tool(ManualWorkflowComposer._workflow_composer)
+        ManualWorkflowComposer._workflow_composer = None
+
+    @staticmethod
+    @CWLKernel.register_magic('newWorkflowAddInput')
+    def new_workflow_add_input(kernel: CWLKernel, args: str):
+        import yaml as y
+        args = args.splitlines()
+        step_id, step_in_id = args[0].split()
+        input_description = '\n'.join(args[1:])
+        input_description = y.safe_load(StringIO(input_description))
+        ManualWorkflowComposer._workflow_composer.add_input(
+            workflow_input=input_description,
+            step_id=step_id.strip(),
+            in_step_id=step_in_id.strip())
+
+    @staticmethod
+    @CWLKernel.register_magic('newWorkflowAddStepIn')
+    def new_workflow_add_step_in(kernel: CWLKernel, args: str):
+        args = args.splitlines()
+        step_in_args = args[0].split()
+        input_description = '\n'.join(args[1:])
+        import yaml as y
+        input_description = y.safe_load(StringIO(input_description))
+        for input_id, description in input_description.items():
+            ManualWorkflowComposer._workflow_composer.add_step_in_out(description, input_id, *step_in_args)
+
+    @staticmethod
+    @CWLKernel.register_magic('newWorkflowAddStep')
+    def new_workflow_add_step(kernel: CWLKernel, ids: str):
+        tool_id, step_id = ids.split()
+        tool = kernel.workflow_repository.get_by_id(tool_id)
+        ManualWorkflowComposer._workflow_composer.add(tool, step_id)
+
+    @staticmethod
+    @CWLKernel.register_magic('newWorkflowAddOutputSource')
+    def new_workflow_add_output_source(kernel: CWLKernel, args: str):
+        reference, type_of = args.split()
+        ManualWorkflowComposer._workflow_composer.add_output_source(reference, type_of)
+
+    @staticmethod
+    @CWLKernel.register_magic('newWorkflow')
+    def new_workflow(kernel: CWLKernel, workflow_id: str):
+        ManualWorkflowComposer._workflow_composer = CWLWorkflow(workflow_id)
 
 
-@CWLKernel.register_magic('newWorkflowAddInput')
-def new_workflow_add_input(kernel: CWLKernel, args: str):
-    import yaml as y
-    args = args.splitlines()
-    step_id, step_in_id = args[0].split()
-    input_description = '\n'.join(args[1:])
-    input_description = y.safe_load(StringIO(input_description))
-    kernel.workflow_composer.add_input(
-        workflow_input=input_description,
-        step_id=step_id.strip(),
-        in_step_id=step_in_id.strip())
+class MagicSnippetBuilder:
+    _snippet_builder: CWLSnippetBuilder = CWLSnippetBuilder()
 
+    @staticmethod
+    @CWLKernel.register_magic()
+    def snippet(kernel: CWLKernel, command: str):
+        """
+        Submit a cwl workflow incrementally. Usage:
+        % snippet add
+        [...]
+        % snippet add
+        [...]
+        % snippet build
 
-@CWLKernel.register_magic('newWorkflowAddStepIn')
-def new_workflow_add_step_in(kernel: CWLKernel, args: str):
-    args = args.splitlines()
-    step_in_args = args[0].split()
-    input_description = '\n'.join(args[1:])
-    import yaml as y
-    input_description = y.safe_load(StringIO(input_description))
-    for input_id, description in input_description.items():
-        kernel.workflow_composer.add_step_in_out(description, input_id, *step_in_args)
+        @param kernel:
+        @param command:
+        @return:
+        """
+        command = command.splitlines()
+        command[0] = command[0].strip()
+        if command[0] == "add":
+            current_code = MagicSnippetBuilder._snippet_add(command)
+        elif command[0] == "build":
+            current_code = MagicSnippetBuilder._snippet_build(kernel, command)
+        else:
+            raise ValueError()
+        kernel.send_json_response(current_code)
 
-
-@CWLKernel.register_magic('newWorkflowAddStep')
-def new_workflow_add_step(kernel: CWLKernel, ids: str):
-    tool_id, step_id = ids.split()
-    tool = kernel.workflow_repository.get_by_id(tool_id)
-    kernel.workflow_composer.add(tool, step_id)
-
-
-@CWLKernel.register_magic('newWorkflowAddOutputSource')
-def new_workflow_add_output_source(kernel: CWLKernel, args: str):
-    reference, type_of = args.split()
-    kernel.workflow_composer.add_output_source(reference, type_of)
-
-
-@CWLKernel.register_magic('newWorkflow')
-def new_workflow(kernel: CWLKernel, workflow_id: str):
-    kernel.workflow_composer = CWLWorkflow(workflow_id)
-
-
-@CWLKernel.register_magic()
-def snippet(kernel: CWLKernel, command: str):
-    """
-    Submit a cwl workflow incrementally. Usage:
-    % snippet add
-    [...]
-    % snippet add
-    [...]
-    % snippet build
-
-    @param kernel:
-    @param command:
-    @return:
-    """
-    command = command.splitlines()
-    command[0] = command[0].strip()
-    y = YAML(typ='rt')
-    if command[0] == "add":
+    @staticmethod
+    def _snippet_add(command):
+        y = YAML(typ='rt')
         snippet = '\n'.join(command[1:])
-        kernel._snippet_builder.append(snippet)
-        current_code = y.load(StringIO(kernel._snippet_builder.get_current_code()))
-    elif command[0] == "build":
+        MagicSnippetBuilder._snippet_builder.append(snippet)
+        return y.load(StringIO(MagicSnippetBuilder._snippet_builder.get_current_code()))
+
+    @staticmethod
+    def _snippet_build(kernel, command):
+        y = YAML(typ='rt')
         snippet = '\n'.join(command[1:])
-        kernel._snippet_builder.append(snippet)
-        workflow = kernel._snippet_builder.build()
+        MagicSnippetBuilder._snippet_builder.append(snippet)
+        workflow = MagicSnippetBuilder._snippet_builder.build()
         kernel.workflow_repository.register_tool(workflow)
-        current_code = y.load(StringIO(kernel._snippet_builder.get_current_code()))
-        kernel._snippet_builder.clear()
-    else:
-        raise ValueError()
-    kernel.send_json_response(current_code)
+        current_code = y.load(StringIO(MagicSnippetBuilder._snippet_builder.get_current_code()))
+        MagicSnippetBuilder._snippet_builder.clear()
+        return current_code
 
 
 class ExecutionMagics:

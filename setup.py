@@ -2,46 +2,9 @@ import codecs
 import os.path
 
 from setuptools import setup
-from setuptools.command.develop import develop
-from setuptools.command.install import install
+import glob
 
 name = 'cwlkernel'
-
-
-def install_kernel_specs():
-    import sys
-    try:
-        from jupyter_client.kernelspec import KernelSpecManager
-        kernel_requirements_directory = os.path.join(
-            os.path.dirname(os.path.realpath(__file__)),
-            'kernelmeta'
-        )
-
-        print('Installing IPython kernel spec')
-        KernelSpecManager().install_kernel_spec(
-            kernel_requirements_directory,
-            name,
-            user=False,
-            prefix=sys.prefix
-        )
-    except ImportError:
-        print('Jupyter is not installed', file=sys.stderr)
-
-
-class PostDevelopCommand(develop):
-    """Post-installation for development mode."""
-
-    def run(self):
-        super().run()
-        install_kernel_specs()
-
-
-class PostInstallCommand(install):
-    """Post-installation for installation mode."""
-
-    def run(self):
-        super().run()
-        install_kernel_specs()
 
 
 def read(rel_path):
@@ -61,6 +24,13 @@ def get_version(rel_path):
 
 with open(os.sep.join([os.path.abspath(os.path.dirname(__file__)), "README.md"]), "r") as fh:
     long_description = fh.read()
+
+DATA_FILES = [
+    (f'share/jupyter/kernels/{name}', [
+        '%s/kernelmeta/kernel.json' % name
+    ] + glob.glob('%s/kernelmeta/*.png' % name)
+     )
+]
 
 setup(
     name=name,
@@ -98,8 +68,5 @@ setup(
         "pygtrie>=2.3.3",
         "pydot>=1.4.1",
     ],
-    cmdclass={
-        'develop': PostDevelopCommand,
-        'install': PostInstallCommand,
-    },
+    data_files=DATA_FILES,
 )
