@@ -23,7 +23,7 @@ from .cwlrepository.CWLComponent import WorkflowComponentFactory
 from .cwlrepository.cwlrepository import WorkflowRepository
 from .git.CWLGitResolver import CWLGitResolver
 
-version = "0.0.2"
+version = "0.0.4"
 BOOT_DIRECTORY = Path(os.getcwd()).absolute()
 CONF = CWLExecuteConfigurator()
 
