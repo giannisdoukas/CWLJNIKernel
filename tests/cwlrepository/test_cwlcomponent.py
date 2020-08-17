@@ -125,7 +125,7 @@ class CWLComponentTest(unittest.TestCase):
             },
             yaml.load(StringIO(final_workflow.to_yaml()), Loader=yaml.BaseLoader))
 
-    def test_two_connect_io_between_steps_nested_yaml(self):
+    def test_two_connect_io_between_steps_composed_yaml(self):
         final_workflow = CWLWorkflow(workflow_id='main')
         head_tool: WorkflowComponent = CWLTool('head', {'class': 'CommandLineTool',
                                                         'cwlVersion': 'v1.0',
